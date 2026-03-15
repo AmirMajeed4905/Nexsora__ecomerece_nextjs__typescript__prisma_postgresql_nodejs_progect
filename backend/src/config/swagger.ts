@@ -1,4 +1,8 @@
 import swaggerJsdoc from "swagger-jsdoc";
+import { authDocs } from "../docs/auth.docs";
+import { productDocs } from "../docs/product.docs";
+import { categoryDocs } from "../docs/category.docs";
+
 
 const options = {
   definition: {
@@ -23,8 +27,15 @@ const options = {
         },
       },
     },
+    paths: {
+      ...authDocs,
+      ...productDocs,
+        ...categoryDocs,
+          
+
+    },
   },
-  apis: ["./src/modules/**/*.routes.ts"],
+  apis: [],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
