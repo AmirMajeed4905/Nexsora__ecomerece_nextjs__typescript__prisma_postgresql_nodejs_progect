@@ -3,6 +3,13 @@ import { prisma } from "../../config/prisma";
 import { sendSuccess, sendError } from "../../utils/response.utils";
 import { createCategorySchema, updateCategorySchema } from "../../validations/category.schema";
 import slugify from "slugify";
+import {
+  uploadImage,
+  deleteImage,
+  updateImage,
+  extractPublicId,
+  CLOUDINARY_FOLDERS,
+} from "../../utils/cloudinary.utils";
 
 // GET /api/categories
 export const getCategories = async (req: Request, res: Response): Promise<void> => {
@@ -52,8 +59,26 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
     return;
   }
 
+  // ── Upload Image to Cloudinary ───────────────────────────────
+  let imageUrl: string | undefined;
+
+  const file = req.file as Express.Multer.File;
+  if (file) {
+    const uploaded = await uploadImage(
+      file.buffer,
+      CLOUDINARY_FOLDERS.CATEGORIES,
+      { width: 600, quality: 90 }
+    );
+    imageUrl = uploaded.url;
+  }
+
   const category = await prisma.category.create({
-    data: { name, slug, ...rest },
+    data: {
+      name,
+      slug,
+      ...rest,
+      ...(imageUrl && { image: imageUrl }),
+    },
   });
 
   sendSuccess(res, 201, "Category created", { category });
@@ -81,6 +106,29 @@ export const updateCategory = async (req: Request, res: Response): Promise<void>
     data.slug = slugify(result.data.name, { lower: true, strict: true });
   }
 
+  // ── Update Image if new file uploaded ────────────────────────
+  const file = req.file as Express.Multer.File;
+  if (file) {
+    if (existing.image) {
+      // Delete old + upload new
+      const oldPublicId = extractPublicId(existing.image);
+      const uploaded = await updateImage(
+        oldPublicId,
+        file.buffer,
+        CLOUDINARY_FOLDERS.CATEGORIES
+      );
+      data.image = uploaded.url;
+    } else {
+      // No old image — just upload
+      const uploaded = await uploadImage(
+        file.buffer,
+        CLOUDINARY_FOLDERS.CATEGORIES,
+        { width: 600, quality: 90 }
+      );
+      data.image = uploaded.url;
+    }
+  }
+
   const category = await prisma.category.update({
     where: { id },
     data,
@@ -89,7 +137,6 @@ export const updateCategory = async (req: Request, res: Response): Promise<void>
   sendSuccess(res, 200, "Category updated", { category });
 };
 
-// DELETE /api/categories/:id — admin only
 // DELETE /api/categories/:id — admin only
 export const deleteCategory = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
@@ -105,6 +152,12 @@ export const deleteCategory = async (req: Request, res: Response): Promise<void>
   if (productsCount > 0) {
     sendError(res, 400, "Cannot delete category with existing products");
     return;
+  }
+
+  // ── Delete Image from Cloudinary ─────────────────────────────
+  if (existing.image) {
+    const publicId = extractPublicId(existing.image);
+    await deleteImage(publicId);
   }
 
   await prisma.category.delete({ where: { id } });

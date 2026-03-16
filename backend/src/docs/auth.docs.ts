@@ -6,7 +6,7 @@ export const authDocs = {
       requestBody: {
         required: true,
         content: {
-          "application/json": {
+          "multipart/form-data": {
             schema: {
               type: "object",
               required: ["name", "email", "password"],
@@ -14,6 +14,7 @@ export const authDocs = {
                 name: { type: "string", example: "Amir Majeed" },
                 email: { type: "string", example: "amir@nexora.com" },
                 password: { type: "string", example: "Test1234" },
+                image: { type: "string", format: "binary", description: "Optional avatar" },
               },
             },
           },
@@ -79,6 +80,32 @@ export const authDocs = {
       security: [{ BearerAuth: [] }],
       responses: {
         200: { description: "User fetched" },
+        401: { description: "Unauthorized" },
+      },
+    },
+  },
+  "/api/auth/avatar": {
+    put: {
+      summary: "Update user avatar",
+      tags: ["Auth"],
+      security: [{ BearerAuth: [] }],
+      requestBody: {
+        required: true,
+        content: {
+          "multipart/form-data": {
+            schema: {
+              type: "object",
+              required: ["image"],
+              properties: {
+                image: { type: "string", format: "binary" },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: { description: "Avatar updated" },
+        400: { description: "Image required" },
         401: { description: "Unauthorized" },
       },
     },

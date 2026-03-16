@@ -14,13 +14,13 @@ export const categoryDocs = {
       requestBody: {
         required: true,
         content: {
-          "application/json": {
+          "multipart/form-data": {
             schema: {
               type: "object",
               required: ["name"],
               properties: {
                 name: { type: "string", example: "Shoes" },
-                image: { type: "string", example: "https://example.com/shoes.jpg" },
+                image: { type: "string", format: "binary" },
               },
             },
           },
@@ -56,6 +56,19 @@ export const categoryDocs = {
       parameters: [
         { name: "id", in: "path", required: true, schema: { type: "string" } },
       ],
+      requestBody: {
+        content: {
+          "multipart/form-data": {
+            schema: {
+              type: "object",
+              properties: {
+                name: { type: "string", example: "Updated Shoes" },
+                image: { type: "string", format: "binary" },
+              },
+            },
+          },
+        },
+      },
       responses: {
         200: { description: "Category updated" },
         404: { description: "Category not found" },
@@ -70,6 +83,7 @@ export const categoryDocs = {
       ],
       responses: {
         200: { description: "Category deleted" },
+        400: { description: "Category has products" },
         404: { description: "Category not found" },
       },
     },

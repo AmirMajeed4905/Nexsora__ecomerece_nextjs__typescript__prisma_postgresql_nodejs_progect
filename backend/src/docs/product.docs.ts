@@ -14,7 +14,7 @@ export const productDocs = {
       requestBody: {
         required: true,
         content: {
-          "application/json": {
+          "multipart/form-data": {
             schema: {
               type: "object",
               required: ["name", "description", "price", "categoryId"],
@@ -24,9 +24,13 @@ export const productDocs = {
                 price: { type: "number", example: 129.99 },
                 discountPrice: { type: "number", example: 99.99 },
                 stock: { type: "number", example: 50 },
-                images: { type: "array", items: { type: "string" } },
                 isTrending: { type: "boolean", example: false },
                 categoryId: { type: "string", example: "clx9k2m3p0001" },
+                images: {
+                  type: "array",
+                  items: { type: "string", format: "binary" },
+                  description: "Max 5 images",
+                },
               },
             },
           },
@@ -63,6 +67,29 @@ export const productDocs = {
       parameters: [
         { name: "id", in: "path", required: true, schema: { type: "string" } },
       ],
+      requestBody: {
+        content: {
+          "multipart/form-data": {
+            schema: {
+              type: "object",
+              properties: {
+                name: { type: "string", example: "Nike Air Max Updated" },
+                description: { type: "string" },
+                price: { type: "number" },
+                discountPrice: { type: "number" },
+                stock: { type: "number" },
+                isTrending: { type: "boolean" },
+                categoryId: { type: "string" },
+                images: {
+                  type: "array",
+                  items: { type: "string", format: "binary" },
+                  description: "Max 5 images — replaces existing images",
+                },
+              },
+            },
+          },
+        },
+      },
       responses: {
         200: { description: "Product updated" },
         404: { description: "Product not found" },

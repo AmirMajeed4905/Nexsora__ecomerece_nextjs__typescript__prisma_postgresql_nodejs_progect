@@ -3,6 +3,12 @@ import { prisma } from "../../config/prisma";
 import { sendSuccess, sendError } from "../../utils/response.utils";
 import { createProductSchema, updateProductSchema } from "../../validations/product.schema";
 import slugify from "slugify";
+import {
+  uploadMultipleImages,
+  deleteMultipleImages,
+  extractPublicId,
+  CLOUDINARY_FOLDERS,
+} from "../../utils/cloudinary.utils";
 
 // GET /api/products
 export const getProducts = async (req: Request, res: Response): Promise<void> => {
@@ -66,8 +72,25 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
     return;
   }
 
+  // ── Upload Images to Cloudinary ──────────────────────────────
+  let imageUrls: string[] = [];
+
+  const files = req.files as Express.Multer.File[];
+  if (files && files.length > 0) {
+    const uploaded = await uploadMultipleImages(
+      files.map((f) => f.buffer),
+      CLOUDINARY_FOLDERS.PRODUCTS
+    );
+    imageUrls = uploaded.map((u) => u.url);
+  }
+
   const product = await prisma.product.create({
-    data: { name, slug, ...rest },
+    data: {
+      name,
+      slug,
+      ...rest,
+      images: imageUrls,
+    },
   });
 
   sendSuccess(res, 201, "Product created", { product });
@@ -97,6 +120,23 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
     data.slug = slugify(result.data.name, { lower: true, strict: true });
   }
 
+  // ── Update Images if new files uploaded ───────────────────────
+  const files = req.files as Express.Multer.File[];
+  if (files && files.length > 0) {
+    // Delete old images from Cloudinary
+    if (existing.images && existing.images.length > 0) {
+      const oldPublicIds = existing.images.map((url) => extractPublicId(url));
+      await deleteMultipleImages(oldPublicIds);
+    }
+
+    // Upload new images
+    const uploaded = await uploadMultipleImages(
+      files.map((f) => f.buffer),
+      CLOUDINARY_FOLDERS.PRODUCTS
+    );
+    data.images = uploaded.map((u) => u.url);
+  }
+
   const product = await prisma.product.update({
     where: { id },
     data,
@@ -114,6 +154,12 @@ export const deleteProduct = async (req: Request, res: Response): Promise<void> 
   if (!existing) {
     sendError(res, 404, "Product not found");
     return;
+  }
+
+  // ── Delete Images from Cloudinary ────────────────────────────
+  if (existing.images && existing.images.length > 0) {
+    const publicIds = existing.images.map((url) => extractPublicId(url));
+    await deleteMultipleImages(publicIds);
   }
 
   await prisma.product.delete({ where: { id } });
