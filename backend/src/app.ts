@@ -13,12 +13,18 @@ const app = express();
 
 // ── Security Middlewares ──────────────────────────────────────
 app.use(helmet());
-app.use(cors({
-  origin: "http://localhost:3000",
-  credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization"],
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-}));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:3000",
+      "http://localhost:3001",
+      process.env.FRONTEND_URL || "http://localhost:3000",
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+)
 
 // ── Body Parsers ──────────────────────────────────────────────
 app.use(express.json());

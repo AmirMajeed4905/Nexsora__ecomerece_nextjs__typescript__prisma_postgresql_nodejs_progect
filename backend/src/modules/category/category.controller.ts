@@ -49,7 +49,7 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
     return;
   }
 
-  const { name, ...rest } = result.data;
+  const { name } = result.data;
   const slug = slugify(name, { lower: true, strict: true });
 
   // Check already exists
@@ -76,7 +76,6 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
     data: {
       name,
       slug,
-      ...rest,
       ...(imageUrl && { image: imageUrl }),
     },
   });
@@ -88,7 +87,12 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
 export const updateCategory = async (req: Request, res: Response): Promise<void> => {
   const { id } = req.params as { id: string };
 
-  const result = updateCategorySchema.safeParse(req.body);
+  // ── Remove empty strings from body ───────────────────────────
+  const cleanBody = Object.fromEntries(
+    Object.entries(req.body).filter(([_, v]) => v !== "")
+  );
+
+  const result = updateCategorySchema.safeParse(cleanBody);
   if (!result.success) {
     sendError(res, 400, result.error.issues[0].message);
     return;
@@ -100,10 +104,25 @@ export const updateCategory = async (req: Request, res: Response): Promise<void>
     return;
   }
 
-  const data: Record<string, unknown> = { ...result.data };
+  const data: Record<string, unknown> = {};
 
-  if (result.data.name) {
-    data.slug = slugify(result.data.name, { lower: true, strict: true });
+  // ── Handle Slug Update (only if name provided) ──────────────
+  if (result.data?.name) {
+    data.name = result.data.name;
+    
+    const newSlug = slugify(result.data.name, { lower: true, strict: true });
+    
+    // Check if new slug already exists elsewhere
+    const slugExists = await prisma.category.findUnique({
+      where: { slug: newSlug },
+    });
+    
+    if (slugExists && slugExists.id !== id) {
+      sendError(res, 409, "Category with this name already exists");
+      return;
+    }
+    
+    data.slug = newSlug;
   }
 
   // ── Update Image if new file uploaded ────────────────────────
@@ -127,6 +146,12 @@ export const updateCategory = async (req: Request, res: Response): Promise<void>
       );
       data.image = uploaded.url;
     }
+  }
+
+  // ── Only update if there are changes ────────────────────────
+  if (Object.keys(data).length === 0) {
+    sendError(res, 400, "No fields to update");
+    return;
   }
 
   const category = await prisma.category.update({

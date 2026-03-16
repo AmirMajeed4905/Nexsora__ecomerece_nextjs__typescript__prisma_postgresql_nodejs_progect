@@ -15,5 +15,6 @@ router.post("/refresh", asyncHandler(authController.refresh));
 router.post("/logout", authMiddleware, asyncHandler(authController.logout));
 router.get("/me", authMiddleware, asyncHandler(authController.getMe));
 router.put("/avatar", authMiddleware, uploadSingle, asyncHandler(authController.updateAvatar));
+router.delete("/account", authMiddleware, asyncHandler(authController.deleteAccount));
 
 export default router;

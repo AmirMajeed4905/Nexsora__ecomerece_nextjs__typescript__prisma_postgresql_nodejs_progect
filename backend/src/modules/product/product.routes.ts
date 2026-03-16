@@ -1,38 +1,51 @@
 import { Router } from "express";
-import * as productController from "./product.controller";
+import {
+  getProducts,
+  getTrendingProducts,
+  getProductBySlug,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+} from "./product.controller";
+import asyncHandler from "../../utils/asyncHandler";
 import authMiddleware from "../../middlewares/auth.middleware";
 import roleMiddleware from "../../middlewares/role.middleware";
-import asyncHandler from "../../utils/asyncHandler";
 import { uploadMultiple } from "../../middlewares/upload.middleware";
 
 const router = Router();
 
-// ── Public Routes ──────────────────────────────────────────────
-router.get("/", asyncHandler(productController.getProducts));
-router.get("/:slug", asyncHandler(productController.getProductBySlug));
+// ── Public routes ─────────────────────────────────────────────
 
-// ── Admin Only Routes ──────────────────────────────────────────
+// GET /api/products?cursor=&limit=&category=&minPrice=&maxPrice=&isTrending=&search=&sortBy=&order=
+router.get("/", asyncHandler(getProducts));
+
+// GET /api/products/trending?limit=8   ← for home page
+router.get("/trending", asyncHandler(getTrendingProducts));
+
+// GET /api/products/:slug
+router.get("/:slug", asyncHandler(getProductBySlug));
+
+// ── Admin only routes ─────────────────────────────────────────
+
+// POST /api/products
 router.post(
   "/",
   authMiddleware,
   roleMiddleware("ADMIN"),
   uploadMultiple,
-  asyncHandler(productController.createProduct)
+  asyncHandler(createProduct)
 );
 
+// PUT /api/products/:id
 router.put(
   "/:id",
   authMiddleware,
   roleMiddleware("ADMIN"),
   uploadMultiple,
-  asyncHandler(productController.updateProduct)
+  asyncHandler(updateProduct)
 );
 
-router.delete(
-  "/:id",
-  authMiddleware,
-  roleMiddleware("ADMIN"),
-  asyncHandler(productController.deleteProduct)
-);
+// DELETE /api/products/:id
+router.delete("/:id", authMiddleware, roleMiddleware("ADMIN"), asyncHandler(deleteProduct));
 
 export default router;

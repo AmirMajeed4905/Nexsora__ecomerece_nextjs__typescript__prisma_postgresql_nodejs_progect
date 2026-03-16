@@ -13,6 +13,7 @@ import { sendSuccess, sendError } from "../../utils/response.utils";
 import {
   uploadImage,
   updateImage,
+  deleteImage,
   extractPublicId,
   CLOUDINARY_FOLDERS,
 } from "../../utils/cloudinary.utils";
@@ -229,4 +230,28 @@ export const updateAvatar = async (req: Request, res: Response): Promise<void> =
   });
 
   sendSuccess(res, 200, "Avatar updated", { user: updatedUser });
+};
+
+// ── Delete Account ─────────────────────────────────────────────
+// DELETE /api/auth/account  (protected)
+export const deleteAccount = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    sendError(res, 404, "User not found");
+    return;
+  }
+
+  // Delete avatar from Cloudinary
+  if (user.avatar) {
+    const publicId = extractPublicId(user.avatar);
+    await deleteImage(publicId);
+  }
+
+  // Delete user — cascade will handle orders, reviews etc.
+  await prisma.user.delete({ where: { id: userId } });
+
+  clearRefreshTokenCookie(res);
+  sendSuccess(res, 200, "Account deleted successfully");
 };
