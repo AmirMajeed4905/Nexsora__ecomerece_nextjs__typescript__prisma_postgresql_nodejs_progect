@@ -75,5 +75,5 @@ http://localhost:5000/api/docs
 - [ ] Cart
 - [ ] Orders
 - [ ] Stripe Payments
-- [ ] Frontend (Next.js)
+- [x] Frontend (Next.js)
 - [ ] Deployment
