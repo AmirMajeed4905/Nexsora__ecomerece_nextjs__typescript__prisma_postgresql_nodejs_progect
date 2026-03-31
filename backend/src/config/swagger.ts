@@ -2,6 +2,7 @@ import swaggerJsdoc from "swagger-jsdoc";
 import { authDocs } from "../docs/auth.docs";
 import { productDocs } from "../docs/product.docs";
 import { categoryDocs } from "../docs/category.docs";
+import { cartDocs } from "../docs/cart.docs";
 
 
 const options = {
@@ -31,6 +32,7 @@ const options = {
       ...authDocs,
       ...productDocs,
         ...categoryDocs,
+      ...cartDocs, 
           
 
     },

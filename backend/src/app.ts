@@ -8,6 +8,7 @@ import { swaggerSpec } from "./config/swagger";
 import authRoutes from "./modules/auth/auth.routes";
 import productRoutes from "./modules/product/product.routes";
 import categoryRoutes from "./modules/category/category.routes";
+import cartRoutes from "./modules/cart/cart.routes";
 
 const app = express();
 
@@ -44,7 +45,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
-
+app.use("/api/cart", cartRoutes);
 // ── 404 Handler ───────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ message: "Endpoint not found" });
