@@ -1,3 +1,4 @@
+// src/docs/order.docs.ts
 export const orderDocs = {
   "/api/orders": {
     post: {
@@ -14,7 +15,15 @@ export const orderDocs = {
               properties: {
                 address: {
                   type: "object",
-                  required: ["fullName", "phone", "street", "city", "state", "postalCode", "country"],
+                  required: [
+                    "fullName",
+                    "phone",
+                    "street",
+                    "city",
+                    "state",
+                    "postalCode",
+                    "country",
+                  ],
                   properties: {
                     fullName: { type: "string", example: "Amir Majeed" },
                     phone: { type: "string", example: "+92 300 1234567" },
@@ -100,7 +109,14 @@ export const orderDocs = {
               properties: {
                 status: {
                   type: "string",
-                  enum: ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"],
+                  enum: [
+                    "PENDING",
+                    "PROCESSING",
+                    "SHIPPED",
+                    "DELIVERED",
+                    "CANCELLED",
+                  ],
+                  example: "PENDING",
                 },
               },
             },
