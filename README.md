@@ -72,8 +72,8 @@ http://localhost:5000/api/docs
 - [x] Authentication (Register, Login, Logout, Refresh Token)
 - [x] Products CRUD
 - [x] Categories CRUD
-- [ ] Cart
-- [ ] Orders
+- [x] Cart
+- [x] Orders
 - [ ] Stripe Payments
 - [x] Frontend (Next.js)
 - [ ] Deployment
