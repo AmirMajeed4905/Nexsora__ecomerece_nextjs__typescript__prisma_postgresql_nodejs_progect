@@ -1,19 +1,17 @@
 import { Router } from "express";
+import * as cartController from "./cart.controller";
 import authMiddleware from "../../middlewares/auth.middleware";
-import {
-  getCart,
-  addToCart,
-  updateCartItem,
-  removeCartItem,
-  clearCart,
-} from "./cart.controller";
+import asyncHandler from "../../utils/asyncHandler";
 
 const router = Router();
 
-router.get("/", authMiddleware, getCart);
-router.post("/add", authMiddleware, addToCart);
-router.put("/update", authMiddleware, updateCartItem);
-router.delete("/remove/:itemId", authMiddleware, removeCartItem);
-router.delete("/clear", authMiddleware, clearCart);
+// All cart routes are protected
+router.use(authMiddleware);
+
+router.get("/", asyncHandler(cartController.getCart));
+router.post("/", asyncHandler(cartController.addToCart));
+router.put("/:itemId", asyncHandler(cartController.updateCartItem));
+router.delete("/clear", asyncHandler(cartController.clearCart));
+router.delete("/:itemId", asyncHandler(cartController.removeCartItem));
 
 export default router;

@@ -1,16 +1,14 @@
 export const cartDocs = {
   "/api/cart": {
     get: {
-      summary: "Get current user's cart",
+      summary: "Get user's cart",
       tags: ["Cart"],
       security: [{ BearerAuth: [] }],
       responses: {
-        200: { description: "Cart retrieved successfully" },
+        200: { description: "Cart fetched" },
         401: { description: "Unauthorized" },
       },
     },
-  },
-  "/api/cart/add": {
     post: {
       summary: "Add item to cart",
       tags: ["Cart"],
@@ -21,10 +19,10 @@ export const cartDocs = {
           "application/json": {
             schema: {
               type: "object",
-              required: ["productId", "quantity"],
+              required: ["productId"],
               properties: {
-                productId: { type: "string", example: "prod_12345" },
-                quantity: { type: "number", example: 2 },
+                productId: { type: "string", example: "clx9k2m3p0001" },
+                quantity: { type: "number", example: 1 },
               },
             },
           },
@@ -32,27 +30,36 @@ export const cartDocs = {
       },
       responses: {
         200: { description: "Item added to cart" },
-        400: { description: "Not enough stock or stock exceeded" },
-        401: { description: "Unauthorized" },
+        400: { description: "Validation error or out of stock" },
         404: { description: "Product not found" },
       },
     },
+    delete: {
+      summary: "Clear cart",
+      tags: ["Cart"],
+      security: [{ BearerAuth: [] }],
+      responses: {
+        200: { description: "Cart cleared" },
+      },
+    },
   },
-  "/api/cart/update": {
+  "/api/cart/{itemId}": {
     put: {
       summary: "Update cart item quantity",
       tags: ["Cart"],
       security: [{ BearerAuth: [] }],
+      parameters: [
+        { name: "itemId", in: "path", required: true, schema: { type: "string" } },
+      ],
       requestBody: {
         required: true,
         content: {
           "application/json": {
             schema: {
               type: "object",
-              required: ["itemId", "quantity"],
+              required: ["quantity"],
               properties: {
-                itemId: { type: "string", example: "item_12345" },
-                quantity: { type: "number", example: 3 },
+                quantity: { type: "number", example: 2 },
               },
             },
           },
@@ -60,52 +67,19 @@ export const cartDocs = {
       },
       responses: {
         200: { description: "Cart updated" },
-        400: { description: "Stock exceeded" },
-        401: { description: "Unauthorized" },
-        404: { description: "Item not found" },
+        404: { description: "Cart item not found" },
       },
     },
-  },
-  "/cart": {
-  get: {
-    summary: "Get current user's cart",
-    description: "Returns the cart and its items for the logged-in user",
-    tags: ["Cart"],
-    security: [{ BearerAuth: [] }],
-    responses: { 200: { description: "Cart retrieved successfully" }, 401: { description: "Unauthorized" } },
-  },
-},
-
-  "/api/cart/remove/{itemId}": {
     delete: {
       summary: "Remove item from cart",
       tags: ["Cart"],
       security: [{ BearerAuth: [] }],
       parameters: [
-        {
-          name: "itemId",
-          in: "path",
-          required: true,
-          schema: { type: "string" },
-          description: "ID of the cart item to remove",
-        },
+        { name: "itemId", in: "path", required: true, schema: { type: "string" } },
       ],
       responses: {
         200: { description: "Item removed" },
-        401: { description: "Unauthorized" },
-        403: { description: "Forbidden" },
-        404: { description: "Item not found" },
-      },
-    },
-  },
-  "/api/cart/clear": {
-    delete: {
-      summary: "Clear all items in cart",
-      tags: ["Cart"],
-      security: [{ BearerAuth: [] }],
-      responses: {
-        200: { description: "Cart cleared" },
-        401: { description: "Unauthorized" },
+        404: { description: "Cart item not found" },
       },
     },
   },
