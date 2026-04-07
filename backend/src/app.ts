@@ -10,6 +10,8 @@ import productRoutes from "./modules/product/product.routes";
 import categoryRoutes from "./modules/category/category.routes";
 import cartRoutes from "./modules/cart/cart.routes";
 import orderRoutes from "./modules/order/order.routes";
+import reviewRoutes from "./modules/review/review.routes";
+import wishlistRoutes from "./modules/wishlist/wishlist.routes";
 
 const app = express();
 
@@ -41,6 +43,8 @@ app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/reviews", reviewRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 
 // ── 404 Handler ───────────────────────────────────────────────
 app.use((req, res) => {
