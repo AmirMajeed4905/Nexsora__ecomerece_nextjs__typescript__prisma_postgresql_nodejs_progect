@@ -1,57 +1,43 @@
 import rateLimit from "express-rate-limit";
 import { Request, Response } from "express";
 
-// ── Generic Rate Limit Response ────────────────────────────────
-const rateLimitHandler = (_req: Request, res: Response): void => {
-  res.status(429).json({
-    success: false,
-    message: "Too many requests. Please try again later.",
-    data: null,
-  });
+const handler = (msg: string) => (_req: Request, res: Response): void => {
+  res.status(429).json({ success: false, message: msg, data: null });
 };
 
-// ── General API Limiter ────────────────────────────────────────
-// 100 requests per 15 minutes per IP
+
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
-  handler: rateLimitHandler,
+  handler: handler("Too many requests. Please try again later."),
 });
 
-// ── Auth Limiter ───────────────────────────────────────────────
-// 10 attempts per 15 minutes — prevents brute force
+// 20 attempts / 15 min — login/register only
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (_req: Request, res: Response): void => {
-    res.status(429).json({
-      success: false,
-      message: "Too many login attempts. Please try again in 15 minutes.",
-      data: null,
-    });
-  },
+  handler: handler("Too many attempts. Please try again in 15 minutes."),
 });
 
-// ── Upload Limiter ─────────────────────────────────────────────
-// 20 uploads per hour
+
 export const uploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 50,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => req.method === "GET",
+  handler: handler("Too many uploads. Please try again later."),
+});
+
+export const reviewLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
-  handler: rateLimitHandler,
-});
-
-// ── Review Limiter ─────────────────────────────────────────────
-// 5 reviews per hour
-export const reviewLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: 5,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: rateLimitHandler,
+  skip: (req) => req.method === "GET",
+  handler: handler("Too many reviews. Please try again later."),
 });
