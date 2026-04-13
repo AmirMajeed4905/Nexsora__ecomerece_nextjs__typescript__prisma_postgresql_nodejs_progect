@@ -76,4 +76,5 @@ http://localhost:5000/api/docs
 - [x] Orders
 - [ ] Stripe Payments
 - [x] Frontend (Next.js)
+- [X] Admin Panel
 - [ ] Deployment
