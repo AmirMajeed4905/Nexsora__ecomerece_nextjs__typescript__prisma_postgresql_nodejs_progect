@@ -14,6 +14,7 @@ import cartRoutes     from "./modules/cart/cart.routes";
 import orderRoutes    from "./modules/order/order.routes";
 import reviewRoutes   from "./modules/review/review.routes";
 import wishlistRoutes from "./modules/wishlist/wishlist.routes";
+import adminRoutes from "./modules/admin/admin.routes";
 
 const app = express();
 
@@ -50,6 +51,7 @@ app.use("/api/cart",       cartRoutes);
 app.use("/api/orders",     orderRoutes);
 app.use("/api/reviews",    reviewLimiter, reviewRoutes);
 app.use("/api/wishlist",   wishlistRoutes);
+app.use("/api/admin", adminRoutes);
 
 // ── 404 Handler ───────────────────────────────────────────────
 app.use((_req, res) => {
