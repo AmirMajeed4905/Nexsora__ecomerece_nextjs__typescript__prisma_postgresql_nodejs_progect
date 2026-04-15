@@ -15,6 +15,7 @@ import orderRoutes    from "./modules/order/order.routes";
 import reviewRoutes   from "./modules/review/review.routes";
 import wishlistRoutes from "./modules/wishlist/wishlist.routes";
 import adminRoutes from "./modules/admin/admin.routes";
+// import paymentRoutes from "./modules/payment/payment.routes";
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.use("/api/orders",     orderRoutes);
 app.use("/api/reviews",    reviewLimiter, reviewRoutes);
 app.use("/api/wishlist",   wishlistRoutes);
 app.use("/api/admin", adminRoutes);
+// app.use("/api/payments", paymentRoutes);
 
 // ── 404 Handler ───────────────────────────────────────────────
 app.use((_req, res) => {
