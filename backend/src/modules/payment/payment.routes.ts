@@ -13,6 +13,7 @@ router.post(
   asyncHandler(paymentController.stripeWebhook)
 );
 
+
 // Protected routes
 router.post("/create-intent", authMiddleware, asyncHandler(paymentController.createPaymentIntent));
 router.post("/cod",           authMiddleware, asyncHandler(paymentController.createCODOrder));
