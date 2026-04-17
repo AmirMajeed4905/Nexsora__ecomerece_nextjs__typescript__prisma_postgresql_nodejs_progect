@@ -23,14 +23,12 @@ app.use(helmet());
 
 app.use(cors({
   origin: [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
+    "http://localhost:3000",
+    "https://nexsora-ecomerece-nextjs-typescript.onrender.com"
   ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'stripe-signature'],
-  exposedHeaders: ['Authorization'],
-  optionsSuccessStatus: 204
+  allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 }));
 // ── Rate Limiting ─────────────────────────────────────────
 app.use(generalLimiter);
