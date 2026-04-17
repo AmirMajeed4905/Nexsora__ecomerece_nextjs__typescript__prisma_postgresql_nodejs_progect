@@ -5,7 +5,12 @@ import cookieParser from "cookie-parser";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./config/swagger";
 import { errorHandler } from "./middlewares/error.middleware";
-import { generalLimiter, authLimiter, uploadLimiter, reviewLimiter } from "./middlewares/rateLimit.middleware";
+import {
+  generalLimiter,
+  authLimiter,
+  uploadLimiter,
+  reviewLimiter,
+} from "./middlewares/rateLimit.middleware";
 
 import authRoutes from "./modules/auth/auth.routes";
 import productRoutes from "./modules/product/product.routes";
@@ -19,80 +24,100 @@ import paymentRoutes from "./modules/payment/payment.routes";
 
 const app = express();
 
-// ── Security & CORS ───────────────────────────────────────
+/* ───────────────────────────────
+   SECURITY
+─────────────────────────────── */
 app.use(helmet());
-// app.use(cors({
-//   origin: [
-//     "http://localhost:3000",
-//   ],
-//   credentials: true,
-//   allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
-//   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-// }));
 
+/* ───────────────────────────────
+   CORS (FIXED)
+─────────────────────────────── */
 const allowedOrigins = [
-  "https://nexsora-ecomerece-nextjs-typescript.vercel.app/",
+  "http://localhost:3000",
+  "https://nexsora-ecomerece-nextjs-typescript.vercel.app"
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow server-to-server / curl
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // allow server-to-server or curl
+      if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
 
-    return callback(new Error("Not allowed by CORS"));
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
-}));
-// ── Rate Limiting ─────────────────────────────────────────
+      console.log("❌ Blocked CORS origin:", origin);
+
+      // IMPORTANT: do NOT throw error (this caused your crash)
+      return callback(null, false);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
+  })
+);
+
+/* ───────────────────────────────
+   RATE LIMITING
+─────────────────────────────── */
 app.use(generalLimiter);
 
-// ── Body Parsers ───────────────────────────────────────────────
+/* ───────────────────────────────
+   BODY PARSERS
+─────────────────────────────── */
 app.use((req, res, next) => {
   if (req.originalUrl === "/api/payments/webhook") {
-    return next();   // Skip json parser for webhook
+    return next();
   }
-  express.json()(req, res, next);
-});          // ← Added limit
+  return express.json({ limit: "10mb" })(req, res, next);
+});
+
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
-// ── Swagger ────────────────────────────────────────────────────
+/* ───────────────────────────────
+   SWAGGER
+─────────────────────────────── */
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// ── Health Check ───────────────────────────────────────────────
+/* ───────────────────────────────
+   HEALTH CHECK
+─────────────────────────────── */
 app.get("/", (_req, res) => {
-  res.json({ 
+  res.json({
     success: true,
     message: "Nexora API is running ✅",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 });
 
-// ── Routes ─────────────────────────────────────────────────────
-app.use("/api/auth",       authLimiter,   authRoutes);
-app.use("/api/products",   uploadLimiter, productRoutes);
+/* ───────────────────────────────
+   ROUTES
+─────────────────────────────── */
+app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/products", uploadLimiter, productRoutes);
 app.use("/api/categories", uploadLimiter, categoryRoutes);
-app.use("/api/cart",       cartRoutes);
-app.use("/api/orders",     orderRoutes);
-app.use("/api/reviews",    reviewLimiter, reviewRoutes);
-app.use("/api/wishlist",   wishlistRoutes);
-app.use("/api/admin",      adminRoutes);
-app.use("/api/payments",   paymentRoutes);   // ← Webhook ke liye important
+app.use("/api/cart", cartRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/reviews", reviewLimiter, reviewRoutes);
+app.use("/api/wishlist", wishlistRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/payments", paymentRoutes);
 
-// ── 404 Handler ───────────────────────────────────────────────
+/* ───────────────────────────────
+   404 HANDLER
+─────────────────────────────── */
 app.use((_req, res) => {
-  res.status(404).json({ 
-    success: false, 
-    message: "Endpoint not found" 
+  res.status(404).json({
+    success: false,
+    message: "Endpoint not found",
   });
 });
 
-// ── Global Error Handler (Must be last) ───────────────────────
+/* ───────────────────────────────
+   GLOBAL ERROR HANDLER
+─────────────────────────────── */
 app.use(errorHandler);
 
 export default app;
