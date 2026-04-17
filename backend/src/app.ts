@@ -20,17 +20,30 @@ import paymentRoutes from "./modules/payment/payment.routes";
 const app = express();
 
 // ── Security & CORS ───────────────────────────────────────
+// ── Security & CORS ───────────────────────────────────────
 app.use(helmet());
-// app.use(cors({
-//   origin: process.env.NODE_ENV === "production" 
-//     ? ["https://your-frontend-domain.com"] 
-//     : "http://localhost:3000",
-//   credentials: true,
-//   allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"], // ← Added for webhook
-//   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-// }));
+
+// Best CORS Setup for your case
 app.use(cors({
-  origin: 'http://localhost:3000'  
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      // Production URL yahan add karo jab frontend deploy ho jaye
+      // process.env.FRONTEND_URL || 'https://your-frontend.com'
+    ];
+
+    // Allow requests with no origin (like Postman, mobile apps)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'stripe-signature'],
+  exposedHeaders: ['Authorization']
 }));
 // ── Rate Limiting ─────────────────────────────────────────
 app.use(generalLimiter);
