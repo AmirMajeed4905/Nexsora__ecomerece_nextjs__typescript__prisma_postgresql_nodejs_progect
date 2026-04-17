@@ -30,7 +30,7 @@ app.use(helmet());
 //   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 // }));
 app.use(cors({
-  origin: '*'  
+  origin: 'http://localhost:3000'  
 }));
 // ── Rate Limiting ─────────────────────────────────────────
 app.use(generalLimiter);
