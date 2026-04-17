@@ -13,6 +13,7 @@ import {
   CLOUDINARY_FOLDERS,
 } from "../../utils/cloudinary.utils";
 
+
 // ── Types ──────────────────────────────────────────────────────
 interface GetProductsQuery {
   // Cursor pagination
@@ -179,7 +180,7 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
   }
 
   let imageUrls: string[] = [];
-  const files = req.files as Express.Multer.File[];
+  const files = req.files as any;
   if (files && files.length > 0) {
     const uploaded = await uploadMultipleImages(
       files.map((f) => f.buffer),
@@ -217,7 +218,7 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
     data.slug = slugify(result.data.name, { lower: true, strict: true });
   }
 
-  const files = req.files as Express.Multer.File[];
+  const files = req.files as any;
   if (files && files.length > 0) {
     if (existing.images && existing.images.length > 0) {
       const oldPublicIds = existing.images.map((url) => extractPublicId(url));
