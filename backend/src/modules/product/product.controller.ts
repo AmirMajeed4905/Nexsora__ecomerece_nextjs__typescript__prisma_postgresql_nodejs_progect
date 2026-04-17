@@ -180,7 +180,7 @@ export const createProduct = async (req: Request, res: Response): Promise<void> 
   }
 
   let imageUrls: string[] = [];
-  const files = req.files as any;
+const files = req.files as any[] | undefined;
   if (files && files.length > 0) {
     const uploaded = await uploadMultipleImages(
       files.map((f) => f.buffer),
@@ -217,8 +217,7 @@ export const updateProduct = async (req: Request, res: Response): Promise<void> 
   if (result.data.name) {
     data.slug = slugify(result.data.name, { lower: true, strict: true });
   }
-
-  const files = req.files as any;
+const files = req.files as any[] | undefined;
   if (files && files.length > 0) {
     if (existing.images && existing.images.length > 0) {
       const oldPublicIds = existing.images.map((url) => extractPublicId(url));
