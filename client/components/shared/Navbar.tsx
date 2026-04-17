@@ -48,11 +48,11 @@ interface NavbarProps {
 
 const navLinks = [
   { name: "Home", href: "/" },
-  { name: "Shop", href: "/shop" },
+  // { name: "Shop", href: "/shop" },
   { name: "Products", href: "/products" },
-  { name: "Categories", href: "/categories" },
-  { name: "Accessories", href: "/accessories" },
-  { name: "Sale", href: "/sale" },
+  // { name: "Categories", href: "/categories" },
+  // { name: "Accessories", href: "/accessories" },
+  // { name: "Sale", href: "/sale" },
 ];
 // ── Component ──────────────────────────────────────────────────
 export default function Navbar({ isLoggedIn, user, cartCount, onLogout }: NavbarProps) {
