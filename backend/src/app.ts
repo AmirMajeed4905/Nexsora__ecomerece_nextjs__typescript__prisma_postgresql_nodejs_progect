@@ -31,22 +31,24 @@ app.use(helmet());
 //   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 // }));
 
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://nexsora-ecomerece-nextjs-typescript.vercel.app",
+  "https://nexsora-ecomerece-nextjs-typescript.onrender.com"
+];
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
 
-    if (
-      origin === "http://localhost:3000" ||
-      origin.endsWith(".vercel.app")
-    ) {
+    if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
 
-    return callback(new Error("Not allowed by CORS"));
+    return callback(new Error(`CORS blocked: ${origin}`));
   },
   credentials: true,
-}));
-// ── Rate Limiting ─────────────────────────────────────────
+}));// ── Rate Limiting ─────────────────────────────────────────
 app.use(generalLimiter);
 
 // ── Body Parsers ───────────────────────────────────────────────
