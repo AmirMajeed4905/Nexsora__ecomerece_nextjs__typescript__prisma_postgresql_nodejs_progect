@@ -34,22 +34,23 @@ app.use(helmet());
 ─────────────────────────────── */
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://nexsora-ecomerece-nextjs-typescript.vercel.app"
+  "https://*.vercel.app"
 ];
 
 app.use(
   cors({
     origin: (origin, callback) => {
-      // allow server-to-server or curl
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith(".vercel.app")
+      ) {
         return callback(null, true);
       }
 
       console.log("❌ Blocked CORS origin:", origin);
 
-      // IMPORTANT: do NOT throw error (this caused your crash)
       return callback(null, false);
     },
     credentials: true,
@@ -57,7 +58,6 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
   })
 );
-
 /* ───────────────────────────────
    RATE LIMITING
 ─────────────────────────────── */
