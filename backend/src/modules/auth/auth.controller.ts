@@ -38,8 +38,9 @@ export const register = async (req: Request, res: Response): Promise<void> => {
 
   // ── Upload Avatar if provided ──────────────────────────────
   let avatarUrl: string | undefined;
-  const file = req.file as Express.Multer.File;
-  if (file) {
+const files = (req.files ?? []) as any[];
+  if (files.length > 0) {
+    const file = files[0];
     const uploaded = await uploadImage(file.buffer, CLOUDINARY_FOLDERS.AVATARS, {
       width: 200,
       height: 200,
@@ -183,11 +184,12 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 // ── Update Avatar ──────────────────────────────────────────────
 // PUT /api/auth/avatar  (protected)
 export const updateAvatar = async (req: Request, res: Response): Promise<void> => {
-  const file = req.file as Express.Multer.File;
-  if (!file) {
+const files = (req.files ?? []) as any[];
+  if (files.length === 0) {
     sendError(res, 400, "Image file is required");
     return;
   }
+  const file = files[0];
 
   const user = await prisma.user.findUnique({
     where: { id: req.user!.userId },

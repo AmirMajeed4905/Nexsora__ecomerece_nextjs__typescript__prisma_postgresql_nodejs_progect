@@ -62,8 +62,9 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
   // ── Upload Image to Cloudinary ───────────────────────────────
   let imageUrl: string | undefined;
 
-  const file = req.file as Express.Multer.File;
-  if (file) {
+const files = (req.files ?? []) as any[]; 
+ if (files.length > 0) {
+    const file = files[0];
     const uploaded = await uploadImage(
       file.buffer,
       CLOUDINARY_FOLDERS.CATEGORIES,
@@ -126,8 +127,9 @@ export const updateCategory = async (req: Request, res: Response): Promise<void>
   }
 
   // ── Update Image if new file uploaded ────────────────────────
-  const file = req.file as Express.Multer.File;
-  if (file) {
+const files = (req.files ?? []) as any[];
+  if (files.length > 0) {
+    const file = files[0];
     if (existing.image) {
       // Delete old + upload new
       const oldPublicId = extractPublicId(existing.image);
