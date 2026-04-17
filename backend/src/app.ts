@@ -33,7 +33,7 @@ app.use(helmet());
 
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://nexsora-ecomerece-nextjs-typescript.onrender.com"
+  "https://nexsora-ecomerece-nextjs-typescript-prisma-postgresq-55907b4ex.vercel.app/"
 ];
 
 app.use(cors({
