@@ -21,17 +21,17 @@ const app = express();
 
 // ── Security & CORS ───────────────────────────────────────
 app.use(helmet());
+
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://nexsora-ecomerece-nextjs-typescript.vercel.app", // Vercel frontend
-  "https://nexsora-ecomerece-nextjs-typescript.onrender.com" // Backend Render domain
+  "https://nexsora-ecomerece-nextjs-typescript.vercel.app", // Frontend (Vercel)
+  "https://nexsora-ecomerece-nextjs-typescript.onrender.com" // Backend (Render)
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
 
-    // Allow exact matches
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
@@ -47,24 +47,25 @@ app.use(cors({
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
 }));
-  credentials: true,
-}));// ── Rate Limiting ─────────────────────────────────────────
+
+// ── Rate Limiting ─────────────────────────────────────────
 app.use(generalLimiter);
 
-// ── Body Parsers ───────────────────────────────────────────────
+// ── Body Parsers ──────────────────────────────────────────
 app.use((req, res, next) => {
   if (req.originalUrl === "/api/payments/webhook") {
     return next();   // Skip json parser for webhook
   }
-  express.json()(req, res, next);
-});          // ← Added limit
+  return express.json()(req, res, next);
+});
+
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
-// ── Swagger ────────────────────────────────────────────────────
+// ── Swagger ───────────────────────────────────────────────
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-// ── Health Check ───────────────────────────────────────────────
+// ── Health Check ──────────────────────────────────────────
 app.get("/", (_req, res) => {
   res.json({ 
     success: true,
@@ -73,7 +74,7 @@ app.get("/", (_req, res) => {
   });
 });
 
-// ── Routes ─────────────────────────────────────────────────────
+// ── Routes ────────────────────────────────────────────────
 app.use("/api/auth",       authLimiter,   authRoutes);
 app.use("/api/products",   uploadLimiter, productRoutes);
 app.use("/api/categories", uploadLimiter, categoryRoutes);
@@ -82,9 +83,9 @@ app.use("/api/orders",     orderRoutes);
 app.use("/api/reviews",    reviewLimiter, reviewRoutes);
 app.use("/api/wishlist",   wishlistRoutes);
 app.use("/api/admin",      adminRoutes);
-app.use("/api/payments",   paymentRoutes);   // ← Webhook ke liye important
+app.use("/api/payments",   paymentRoutes);   // Webhook ke liye important
 
-// ── 404 Handler ───────────────────────────────────────────────
+// ── 404 Handler ───────────────────────────────────────────
 app.use((_req, res) => {
   res.status(404).json({ 
     success: false, 
@@ -92,7 +93,7 @@ app.use((_req, res) => {
   });
 });
 
-// ── Global Error Handler (Must be last) ───────────────────────
+// ── Global Error Handler (Must be last) ───────────────────
 app.use(errorHandler);
 
 export default app;
