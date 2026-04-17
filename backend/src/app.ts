@@ -31,24 +31,20 @@ app.use(helmet());
 //   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 // }));
 
-const allowedOrigins = [
-  "http://localhost:3000",
-  "https://nexsora-ecomerece-nextjs-typescript-prisma-postgresq-55907b4ex.vercel.app/"
-];
-
 app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true); // allow server-to-server / curl
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
+    if (
+      origin === "http://localhost:3000" ||
+      origin.endsWith(".vercel.app")
+    ) {
       return callback(null, true);
     }
 
     return callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
 }));
 // ── Rate Limiting ─────────────────────────────────────────
 app.use(generalLimiter);
