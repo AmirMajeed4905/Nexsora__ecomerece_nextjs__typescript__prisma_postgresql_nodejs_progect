@@ -74,7 +74,7 @@ http://localhost:5000/api/docs
 - [x] Categories CRUD
 - [x] Cart
 - [x] Orders
-- [ ] Stripe Payments
+- [X] Stripe Payments
 - [x] Frontend (Next.js)
 - [X] Admin Panel
 - [ ] Deployment
