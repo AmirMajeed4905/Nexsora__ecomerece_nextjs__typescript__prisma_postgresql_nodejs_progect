@@ -21,32 +21,32 @@ const app = express();
 
 // ── Security & CORS ───────────────────────────────────────
 app.use(helmet());
-// app.use(cors({
-//   origin: [
-//     "http://localhost:3000",
-//     "https://nexsora-ecomerece-nextjs-typescript.onrender.com"
-//   ],
-//   credentials: true,
-//   allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
-//   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-// }));
-
 const allowedOrigins = [
   "http://localhost:3000",
-  "https://nexsora-ecomerece-nextjs-typescript.vercel.app",
-  "https://nexsora-ecomerece-nextjs-typescript.onrender.com"
+  "https://nexsora-ecomerece-nextjs-typescript.vercel.app", // Vercel frontend
+  "https://nexsora-ecomerece-nextjs-typescript.onrender.com" // Backend Render domain
 ];
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
 
+    // Allow exact matches
     if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Allow all *.vercel.app preview deployments
+    if (/\.vercel\.app$/.test(origin)) {
       return callback(null, true);
     }
 
     return callback(new Error(`CORS blocked: ${origin}`));
   },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
+}));
   credentials: true,
 }));// ── Rate Limiting ─────────────────────────────────────────
 app.use(generalLimiter);
