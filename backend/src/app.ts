@@ -21,14 +21,21 @@ const app = express();
   // ── Security & CORS ───────────────────────────────────────
 app.use(helmet());
 
+// app.use(cors({
+//   origin: [
+//     "http://localhost:3000",
+//     "https://nexsora-ecomerece-nextjs-typescript-prisma-postgresq-eneyxaqlc.vercel.app/"
+//   ],
+//   credentials: true,
+//   allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
+//   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+// }));
 app.use(cors({
   origin: [
     "http://localhost:3000",
-    "https://nexsora-ecomerece-nextjs-typescript-prisma-postgresq-eneyxaqlc.vercel.app/"
+    "https://nexsora-ecomerece-nextjs-typescript-prisma-postgresq-eneyxaqlc.vercel.app"
   ],
   credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 }));
 // ── Rate Limiting ─────────────────────────────────────────
 app.use(generalLimiter);
