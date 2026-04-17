@@ -21,15 +21,17 @@ const app = express();
 
 // ── Security & CORS ───────────────────────────────────────
 app.use(helmet());
+// app.use(cors({
+//   origin: process.env.NODE_ENV === "production" 
+//     ? ["https://your-frontend-domain.com"] 
+//     : "http://localhost:3000",
+//   credentials: true,
+//   allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"], // ← Added for webhook
+//   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+// }));
 app.use(cors({
-  origin: process.env.NODE_ENV === "production" 
-    ? ["https://your-frontend-domain.com"] 
-    : "http://localhost:3000",
-  credentials: true,
-  allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"], // ← Added for webhook
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  origin: '*'  
 }));
-
 // ── Rate Limiting ─────────────────────────────────────────
 app.use(generalLimiter);
 
