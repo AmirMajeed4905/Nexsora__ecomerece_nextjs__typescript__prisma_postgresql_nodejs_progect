@@ -18,24 +18,37 @@ import adminRoutes from "./modules/admin/admin.routes";
 import paymentRoutes from "./modules/payment/payment.routes";
 
 const app = express();
-  // ── Security & CORS ───────────────────────────────────────
-app.use(helmet());
 
+// ── Security & CORS ───────────────────────────────────────
+app.use(helmet());
 // app.use(cors({
 //   origin: [
 //     "http://localhost:3000",
-//     "https://nexsora-ecomerece-nextjs-typescript-prisma-postgresq-eneyxaqlc.vercel.app/"
+//     "https://nexsora-ecomerece-nextjs-typescript.onrender.com"
 //   ],
 //   credentials: true,
 //   allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
 //   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
 // }));
+
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://nexsora-ecomerece-nextjs-typescript.onrender.com"
+];
+
 app.use(cors({
-  origin: [
-    "http://localhost:3000",
-    "https://nexsora-ecomerece-nextjs-typescript-prisma-postgresq-eneyxaqlc.vercel.app"
-  ],
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true); // allow server-to-server / curl
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    return callback(new Error("Not allowed by CORS"));
+  },
   credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
 }));
 // ── Rate Limiting ─────────────────────────────────────────
 app.use(generalLimiter);
