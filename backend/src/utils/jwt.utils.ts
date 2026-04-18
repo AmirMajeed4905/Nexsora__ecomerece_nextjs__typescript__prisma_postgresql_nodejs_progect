@@ -40,7 +40,7 @@ import { Response } from "express";
 export const setRefreshTokenCookie = (res: Response, token: string): void => {
   res.cookie("refreshToken", token, {
     httpOnly: true,
-    secure: ENV.NODE_ENV === "production",
+    secure: true,
     sameSite: "none",
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
   });
@@ -50,7 +50,7 @@ export const setRefreshTokenCookie = (res: Response, token: string): void => {
 export const clearRefreshTokenCookie = (res: Response): void => {
   res.clearCookie("refreshToken", {
     httpOnly: true,
-    secure: ENV.NODE_ENV === "production",
+    secure: true,
     sameSite: "none",
   });
 };
