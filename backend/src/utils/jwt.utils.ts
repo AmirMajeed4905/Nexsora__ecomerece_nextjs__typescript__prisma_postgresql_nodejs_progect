@@ -33,24 +33,21 @@ export const verifyRefreshToken = (token: string): TokenPayload => {
 };
 
 // ── Set Refresh Token Cookie ───────────────────────────────────
-// HttpOnly: JS cannot read it — XSS safe
-// Secure: only sent over HTTPS in production
-import { Response } from "express";
+
 
 export const setRefreshTokenCookie = (res: Response, token: string): void => {
   res.cookie("refreshToken", token, {
     httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+    secure: true,          // ← HTTPS pe zaroor true
+    sameSite: "none",      // ← Cross-origin ke liye "none" hona chahiye
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
 
-// ── Clear Refresh Token Cookie ─────────────────────────────────
 export const clearRefreshTokenCookie = (res: Response): void => {
   res.clearCookie("refreshToken", {
     httpOnly: true,
     secure: true,
-    sameSite: "none",
+    sameSite: "none",      // ← Yahan bhi
   });
 };
