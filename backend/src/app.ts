@@ -38,7 +38,7 @@ app.use(cors({
   origin: (origin, callback) => {
     const allowed = [
       "http://localhost:3000",
-      "https://nexora-red-two.vercel.app",
+      "https://nexora-juerxtpzy-amirmajeed4905s-projects.vercel.app/",
       // Vercel preview URLs allow karo
     ];
     
