@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { ENV } from "../config/env";
-
+import { Response } from "express"; 
 // ── Token Payload Type ─────────────────────────────────────────
 export interface TokenPayload {
   userId: string;
