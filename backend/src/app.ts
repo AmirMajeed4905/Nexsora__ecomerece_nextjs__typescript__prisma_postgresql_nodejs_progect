@@ -34,35 +34,25 @@ app.use(helmet());
 ─────────────────────────────── */
 
 
-
-// app.use(
-//   cors({
-//     origin: (origin, callback) => {
-//       if (!origin) return callback(null, true);
-
-//       // allow localhost
-//       if (origin.includes("localhost:3000")) {
-//         return callback(null, true);
-//       }
-
-//       // allow all vercel preview deployments
-//       if (origin.endsWith(".vercel.app")) {
-//         return callback(null, true);
-//       }
-
-//       return callback(null, false);
-//     },
-//     credentials: true,
-//   })
-// );
-app.use(
-  cors({
-    origin: true,   // 🔥 allow ALL origins
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "stripe-signature"],
-  })
-);
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowed = [
+      "http://localhost:3000",
+      "https://nexora-red-two.vercel.app",
+      // Vercel preview URLs allow karo
+    ];
+    
+    // Koi bhi vercel.app URL allow karo (development ke liye)
+    if (!origin || allowed.includes(origin) || origin.endsWith(".vercel.app")) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+}));
 /* ───────────────────────────────
    RATE LIMITING
 ─────────────────────────────── */
