@@ -98,19 +98,18 @@ export default function Footer() {
                 Subscribe for exclusive deals, new arrivals and style tips.
               </p>
             </div>
-            <div className="flex gap-2 w-full md:w-auto">
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                placeholder="Enter your email address"
-                className="flex-1 md:w-72 px-4 py-3 rounded-xl bg-zinc-800 border border-zinc-700 text-white text-sm outline-none placeholder-zinc-600 focus:border-rose-500 transition-colors"
-              />
-              <button className="px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold transition-colors whitespace-nowrap">
-                Subscribe
-              </button>
-            </div>
-          </div>
+            <div className="flex flex-col md:flex-row gap-2 w-full md:w-auto">
+  <input
+    type="email"
+    value={email}
+    onChange={e => setEmail(e.target.value)}
+    placeholder="Enter your email address"
+    className="w-full md:w-72 px-4 py-3 rounded-xl bg-zinc-800 border border-zinc-700 text-white text-sm outline-none placeholder-zinc-600 focus:border-rose-500 transition-colors"
+  />
+  <button className="w-full md:w-auto px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-sm font-bold transition-colors whitespace-nowrap">
+    Subscribe
+  </button>
+</div>          </div>
         </div>
       </div>
 
