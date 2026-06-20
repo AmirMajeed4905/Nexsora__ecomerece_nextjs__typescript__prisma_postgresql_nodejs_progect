@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexora Store</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+  <style>
+    .product-card {
+      transition: all 0.4s ease;
+    }
+    .product-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+    }
+    .product-image {
+      transition: transform 0.5s ease;
+    }
+    .product-card:hover .product-image {
+      transform: scale(1.07);
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <div class="max-w-7xl mx-auto px-6 py-12">
+    
+    <!-- Header -->
+    <div class="flex flex-col md:flex-row justify-between items-center gap-6 mb-16">
+      <div>
+        <h1 class="text-5xl font-bold text-gray-900">Nexora</h1>
+        <p class="text-gray-600 mt-2 text-xl">Premium Collection</p>
+      </div>
+
+      <div class="flex-1 max-w-xl">
+        <div class="relative">
+          <input id="searchInput" 
+                 type="text" 
+                 placeholder="Search shoes, shirts, brands..." 
+                 class="w-full bg-white border border-gray-300 focus:border-orange-500 rounded-3xl px-6 py-4 text-lg outline-none pl-14 shadow-sm">
+          <i class="fas fa-search absolute left-6 top-1/2 -translate-y-1/2 text-gray-400 text-xl"></i>
+        </div>
+      </div>
+
+      <button onclick="fetchProducts()" 
+              class="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-3xl font-semibold flex items-center gap-3 transition shadow-md">
+        <i class="fas fa-sync"></i> Refresh
+      </button>
+    </div>
+
+    <!-- Products Grid - Center & Clean -->
+    <div id="productsContainer" 
+         class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 justify-items-center">
+      <!-- Products dynamically load honge -->
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="hidden text-center py-20">
+      <i class="fas fa-spinner fa-spin text-4xl text-orange-500"></i>
+      <p class="mt-6 text-gray-600 text-lg">Loading products...</p>
+    </div>
+  </div>
+
+  <script>
+    const productsContainer = document.getElementById('productsContainer');
+    const searchInput = document.getElementById('searchInput');
+    const loading = document.getElementById('loading');
+
+    async function fetchProducts() {
+      productsContainer.innerHTML = '';
+      loading.classList.remove('hidden');
+
+      try {
+        const res = await fetch('https://nexsora-ecomerece-nextjs-typescript.onrender.com/api/products');
+        const result = await res.json();
+
+        if (!result.success) {
+          productsContainer.innerHTML = `<p class="text-red-500 text-center col-span-full text-xl">Error: ${result.message}</p>`;
+          return;
+        }
+
+        renderProducts(result.data.products);
+      } catch (err) {
+        productsContainer.innerHTML = `
+          <p class="text-red-500 text-center col-span-full text-xl py-10">
+            Unable to load products. Please try again.
+          </p>`;
+      } finally {
+        loading.classList.add('hidden');
+      }
+    }
+
+    function renderProducts(products) {
+      productsContainer.innerHTML = '';
+
+      products.forEach(product => {
+        const discount = Math.round(((product.price - product.discountPrice) / product.price) * 100);
+
+        const cardHTML = `
+          <div class="product-card bg-white rounded-3xl overflow-hidden border border-gray-200 w-full max-w-xs">
+            <div class="relative">
+              <img src="${product.images[0]}" 
+                   alt="${product.name}" 
+                   class="product-image w-full h-64 object-cover">
+
+              ${product.isTrending ? `
+                <div class="absolute top-4 left-4 bg-red-500 text-white text-xs font-bold px-4 py-1.5 rounded-2xl flex items-center gap-1 shadow">
+                  🔥 TRENDING
+                </div>` : ''}
+
+              ${discount > 0 ? `
+                <div class="absolute top-4 right-4 bg-green-500 text-white text-xs font-bold px-4 py-1.5 rounded-2xl shadow">
+                  -${discount}%
+                </div>` : ''}
+            </div>
+
+            <div class="p-5">
+              <h3 class="font-semibold text-lg text-gray-900 line-clamp-2 min-h-[50px]">${product.name}</h3>
+              <p class="text-gray-500 text-sm mt-1">${product.category.name}</p>
+
+              <!-- Rating -->
+              <div class="flex items-center gap-1 mt-4">
+                ${Array(5).fill(0).map((_, i) => `
+                  <i class="fas fa-star ${i < Math.floor(product.avgRating) ? 'text-yellow-400' : 'text-gray-300'}"></i>
+                `).join('')}
+                <span class="text-gray-500 text-sm ml-2">(${product.reviewCount})</span>
+              </div>
+
+              <!-- Price -->
+              <div class="mt-5 flex items-center gap-3">
+                <span class="text-2xl font-bold text-gray-900">$${product.discountPrice}</span>
+                ${product.price > product.discountPrice ? `
+                  <span class="text-gray-400 line-through">$${product.price}</span>
+                ` : ''}
+              </div>
+
+              <p class="text-sm mt-1 ${product.stock > 0 ? 'text-green-600' : 'text-red-500'}">
+                ${product.stock > 0 ? `In stock (${product.stock})` : 'Out of stock'}
+              </p>
+
+              <button onclick="addToCart('${product.id}', '${product.name.replace(/'/g, "\\'")}')" 
+                      class="mt-7 w-full bg-gray-900 hover:bg-orange-500 text-white font-semibold py-3.5 rounded-2xl transition-all flex items-center justify-center gap-2">
+                <i class="fas fa-cart-plus"></i> Add to Cart
+              </button>
+            </div>
+          </div>
+        `;
+
+        productsContainer.innerHTML += cardHTML;
+      });
+    }
+
+    function addToCart(id, name) {
+      alert(`✅ ${name} added to cart!`);
+    }
+
+    // Search
+    searchInput.addEventListener('input', () => {
+      const term = searchInput.value.toLowerCase();
+      const cards = productsContainer.getElementsByClassName('product-card');
+
+      Array.from(cards).forEach(card => {
+        const title = card.querySelector('h3').textContent.toLowerCase();
+        card.style.display = title.includes(term) ? 'block' : 'none';
+      });
+    });
+
+    // Auto load products
+    window.onload = fetchProducts;
+  </script>
+</body>
+</html>

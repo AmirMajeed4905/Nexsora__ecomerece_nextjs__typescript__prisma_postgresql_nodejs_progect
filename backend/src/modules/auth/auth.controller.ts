@@ -1,0 +1,299 @@
+import { Request, Response } from "express";
+import bcrypt from "bcrypt";
+import { prisma } from "../../config/prisma";
+import { registerSchema, loginSchema } from "../../validations/auth.schema";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+  setAccessTokenCookie,
+  clearAccessTokenCookie,
+  setRefreshTokenCookie,
+  clearRefreshTokenCookie,
+} from "../../utils/jwt.utils";
+import { sendSuccess, sendError } from "../../utils/response.utils";
+import {
+  uploadImage,
+  updateImage,
+  deleteImage,
+  extractPublicId,
+  CLOUDINARY_FOLDERS,
+} from "../../utils/cloudinary.utils";
+
+// Helper to set userRole cookie (Frontend + Middleware ke liye)
+// This one stays NON-httpOnly on purpose — middleware.ts (Next.js, runs at
+// the edge) and the navbar need to read the role to decide what to render,
+// without making an API call. It only ever holds a role string ("ADMIN" /
+// "CUSTOMER"), never a credential, so it isn't a token-theft risk the way
+// the access/refresh tokens would be if they were JS-readable.
+const setUserRoleCookie = (res: Response, role: string) => {
+  const isProd = process.env.NODE_ENV === "production";
+  res.cookie("userRole", role, {
+    httpOnly: false,
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+    maxAge: 60 * 60 * 24 * 7,           // 7 days
+  });
+};
+
+// Clearing a cookie requires the SAME sameSite/secure options used when it
+// was set — otherwise the browser won't recognize it as the same cookie
+// and silently keeps the old one around.
+const clearUserRoleCookie = (res: Response) => {
+  const isProd = process.env.NODE_ENV === "production";
+  res.clearCookie("userRole", {
+    httpOnly: false,
+    secure: isProd,
+    sameSite: isProd ? "none" : "lax",
+  });
+};
+
+// ── Register ───────────────────────────────────────────────────
+export const register = async (req: Request, res: Response): Promise<void> => {
+  const result = registerSchema.safeParse(req.body);
+  if (!result.success) {
+    sendError(res, 400, result.error.issues[0].message);
+    return;
+  }
+
+  const { name, email, password } = result.data;
+
+  const existingUser = await prisma.user.findUnique({ where: { email } });
+  if (existingUser) {
+    sendError(res, 409, "Email already registered");
+    return;
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 12);
+
+  // Avatar Upload
+  let avatarUrl: string | undefined;
+  const files = (req.files ?? []) as any[];
+  if (files.length > 0) {
+    const file = files[0];
+    const uploaded = await uploadImage(file.buffer, CLOUDINARY_FOLDERS.AVATARS, {
+      width: 200,
+      height: 200,
+      quality: 90,
+    });
+    avatarUrl = uploaded.url;
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      name,
+      email,
+      password: hashedPassword,
+      ...(avatarUrl && { avatar: avatarUrl }),
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      avatar: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  const accessToken = generateAccessToken({ userId: user.id, role: user.role });
+  const refreshToken = generateRefreshToken({ userId: user.id, role: user.role });
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { refreshToken },
+  });
+
+  // Both tokens go in httpOnly cookies — never in the JSON response body —
+  // so there's no token for frontend JS to read, store, or leak via XSS.
+  setAccessTokenCookie(res, accessToken);
+  setRefreshTokenCookie(res, refreshToken);
+  setUserRoleCookie(res, user.role);
+
+  sendSuccess(res, 201, "Account created successfully", { user });
+};
+
+// ── Login ──────────────────────────────────────────────────────
+export const login = async (req: Request, res: Response): Promise<void> => {
+  const result = loginSchema.safeParse(req.body);
+  if (!result.success) {
+    sendError(res, 400, result.error.issues[0].message);
+    return;
+  }
+
+  const { email, password } = result.data;
+
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if (!user || !user.password) {
+    sendError(res, 401, "Invalid email or password");
+    return;
+  }
+
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    sendError(res, 401, "Invalid email or password");
+    return;
+  }
+
+  const accessToken = generateAccessToken({ userId: user.id, role: user.role });
+  const refreshToken = generateRefreshToken({ userId: user.id, role: user.role });
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { refreshToken },
+  });
+
+  setAccessTokenCookie(res, accessToken);
+  setRefreshTokenCookie(res, refreshToken);
+  setUserRoleCookie(res, user.role);
+
+  const { password: _p, refreshToken: _r, ...safeUser } = user;
+
+  sendSuccess(res, 200, "Login successful", { user: safeUser });
+};
+
+// ── Logout ─────────────────────────────────────────────────────
+export const logout = async (req: Request, res: Response): Promise<void> => {
+  await prisma.user.update({
+    where: { id: req.user!.userId },
+    data: { refreshToken: null },
+  });
+
+  clearAccessTokenCookie(res);
+  clearRefreshTokenCookie(res);
+  clearUserRoleCookie(res);
+
+  sendSuccess(res, 200, "Logged out successfully");
+};
+
+// ── Refresh Token ──────────────────────────────────────────────
+export const refresh = async (req: Request, res: Response): Promise<void> => {
+  const token = req.cookies?.refreshToken;
+  if (!token) {
+    sendError(res, 401, "Refresh token not found");
+    return;
+  }
+
+  let payload;
+  try {
+    payload = verifyRefreshToken(token);
+  } catch {
+    sendError(res, 401, "Invalid or expired refresh token");
+    return;
+  }
+
+  const user = await prisma.user.findUnique({ where: { id: payload.userId } });
+  if (!user || user.refreshToken !== token) {
+    sendError(res, 401, "Refresh token mismatch");
+    return;
+  }
+
+  const accessToken = generateAccessToken({ userId: user.id, role: user.role });
+  setAccessTokenCookie(res, accessToken);
+  setUserRoleCookie(res, user.role);
+
+  // No token in the body anymore — the frontend doesn't need it; the
+  // cookie was just (re)set above and will be sent automatically on the
+  // next request because axios calls use withCredentials: true.
+  sendSuccess(res, 200, "Token refreshed");
+};
+
+// ── Get Me ─────────────────────────────────────────────────────
+export const getMe = async (req: Request, res: Response): Promise<void> => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      avatar: true,
+      googleId: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  if (!user) {
+    sendError(res, 404, "User not found");
+    return;
+  }
+
+  sendSuccess(res, 200, "User fetched", { user });
+};
+
+// ── Update Avatar ──────────────────────────────────────────────
+export const updateAvatar = async (req: Request, res: Response): Promise<void> => {
+  const files = (req.files ?? []) as any[];
+  if (files.length === 0) {
+    sendError(res, 400, "Image file is required");
+    return;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: req.user!.userId },
+  });
+
+  if (!user) {
+    sendError(res, 404, "User not found");
+    return;
+  }
+
+  let avatarUrl: string;
+  const file = files[0];
+
+  if (user.avatar) {
+    const oldPublicId = extractPublicId(user.avatar);
+    const uploaded = await updateImage(oldPublicId, file.buffer, CLOUDINARY_FOLDERS.AVATARS);
+    avatarUrl = uploaded.url;
+  } else {
+    const uploaded = await uploadImage(file.buffer, CLOUDINARY_FOLDERS.AVATARS, {
+      width: 200,
+      height: 200,
+      quality: 90,
+    });
+    avatarUrl = uploaded.url;
+  }
+
+  const updatedUser = await prisma.user.update({
+    where: { id: req.user!.userId },
+    data: { avatar: avatarUrl },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      avatar: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+
+  sendSuccess(res, 200, "Avatar updated", { user: updatedUser });
+};
+
+// ── Delete Account ─────────────────────────────────────────────
+export const deleteAccount = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.userId;
+
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) {
+    sendError(res, 404, "User not found");
+    return;
+  }
+
+  if (user.avatar) {
+    const publicId = extractPublicId(user.avatar);
+    await deleteImage(publicId);
+  }
+
+  await prisma.user.delete({ where: { id: userId } });
+
+  clearAccessTokenCookie(res);
+  clearRefreshTokenCookie(res);
+  clearUserRoleCookie(res);
+
+  sendSuccess(res, 200, "Account deleted successfully");
+};
