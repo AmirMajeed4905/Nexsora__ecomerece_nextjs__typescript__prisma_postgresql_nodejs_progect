@@ -282,7 +282,7 @@ export default function ProductsClient() {
 
   const [products,   setProducts]   = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({ nextCursor: null, hasNextPage: false, limit: 12 });
+  const [pagination, setPagination] = useState<Pagination>({ nextCursor: null, hasNextPage: false, limit: 8 });
 
   const [view,           setView]           = useState<ViewMode>("grid");
   const [activeCategory, setActiveCategory] = useState<string>("all");
@@ -308,7 +308,7 @@ export default function ProductsClient() {
   const fetchProducts = useCallback(async (cursor?: string) => {
     const [sortBy, order] = sortValue.split("_") as [SortBy, Order];
 
-    const params: Record<string, string> = { limit: "12", sortBy, order };
+    const params: Record<string, string> = { limit: "8", sortBy, order };
     if (cursor)                       params.cursor   = cursor;
     if (activeCategory !== "all")     params.category = activeCategory;
     if (search)                       params.search   = search;
