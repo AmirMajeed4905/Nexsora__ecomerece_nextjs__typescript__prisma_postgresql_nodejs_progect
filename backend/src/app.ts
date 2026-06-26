@@ -19,6 +19,24 @@ import adminRoutes from "./modules/admin/admin.routes";
 import paymentRoutes from "./modules/payment/payment.routes";
 
 const app = express();
+
+// Render (like Heroku/most PaaS) terminates HTTPS at a reverse proxy and
+// forwards the request to this app over plain HTTP, signaling the
+// original protocol via the X-Forwarded-Proto header. Without telling
+// Express to trust that header, req.secure is always false here, and
+// res.cookie's behavior for secure:true + sameSite:"none" cookies breaks
+// silently — which is exactly why cookies were showing up as
+// Lax/Strict instead of None in production despite the code being correct.
+app.set("trust proxy", true);
+
+// helmet sets a batch of security-related HTTP headers (XSS protection,
+// no-sniff, hide X-Powered-By, etc). crossOriginResourcePolicy is
+// disabled because its default ("same-origin") would block the frontend
+// (a different origin) from loading images proxied/served from here, and
+// more importantly would conflict with loading Cloudinary-hosted images
+// embedded via <Image> in some browser configurations.
+app.use(helmet({ crossOriginResourcePolicy: false }));
+
 const allowedOrigins = [
   ENV.CLIENT_URL?.replace(/\/$/, ""), // remove trailing slash safely
   "http://localhost:3000",

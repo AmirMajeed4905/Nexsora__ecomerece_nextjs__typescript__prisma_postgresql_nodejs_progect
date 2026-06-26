@@ -9,16 +9,28 @@ import CheckoutModal from "@/components/checkout/CheckoutModal";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ButtonSpinner from "@/components/ui/ButtonSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import ProtectedRoute from "@/components/shared/ProtectedRoute";
 
-// ── Component ──────────────────────────────────────────────────
+// ── Page (wraps content with the auth guard) ────────────────────
 export default function CartPage() {
-  const { user, isInitialized } = useAuthStore(); // ← isInitialized use karo
+  return (
+    <ProtectedRoute>
+      <CartPageContent />
+    </ProtectedRoute>
+  );
+}
+
+// ── Content ──────────────────────────────────────────────────────
+function CartPageContent() {
+  const { user, isInitialized } = useAuthStore();
   const { cart, isLoading, fetchCart, updateItem, removeItem, clearCart } = useCartStore();
   const [showCheckout, setShowCheckout] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
 
   useEffect(() => {
-    // Auth initialize hone ka wait karo, phir user check karo
+    // ProtectedRoute already guarantees isInitialized && user by the time
+    // this renders, but the check stays here too since fetchCart()
+    // specifically needs user to exist before it has anything to fetch for.
     if (isInitialized && user) {
       fetchCart();
     }
@@ -33,8 +45,7 @@ export default function CartPage() {
     setIsClearing(false);
   };
 
-  // Auth initialize hone tak wait karo
-  if (!isInitialized || isLoading) {
+  if (isLoading) {
     return <LoadingSpinner message="Loading your cart..." />;
   }
 

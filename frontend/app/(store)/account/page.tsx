@@ -6,8 +6,17 @@ import { toast } from "sonner";
 import { useAuthStore } from "@/store/authStore";
 import api from "@/lib/axios";
 import ButtonSpinner from "@/components/ui/ButtonSpinner";
+import ProtectedRoute from "@/components/shared/ProtectedRoute";
 
 export default function AccountPage() {
+  return (
+    <ProtectedRoute>
+      <AccountPageContent />
+    </ProtectedRoute>
+  );
+}
+
+function AccountPageContent() {
     const router = useRouter();
     const { user, setAuth, logout } = useAuthStore();
     const fileInputRef = useRef<HTMLInputElement>(null);

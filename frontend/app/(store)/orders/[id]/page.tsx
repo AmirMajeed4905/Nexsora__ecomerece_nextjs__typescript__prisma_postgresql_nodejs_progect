@@ -9,6 +9,7 @@ import api from "@/lib/axios";
 import { getErrorMessage } from "@/lib/utils";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import ButtonSpinner from "@/components/ui/ButtonSpinner";
+import ProtectedRoute from "@/components/shared/ProtectedRoute";
 
 // ── Types ──────────────────────────────────────────────────────
 interface Address {
@@ -58,6 +59,14 @@ const STEPS = ["Order Placed", "Processing", "Shipped", "Delivered"];
 
 // ── Component ──────────────────────────────────────────────────
 export default function OrderDetailPage() {
+  return (
+    <ProtectedRoute>
+      <OrderDetailPageContent />
+    </ProtectedRoute>
+  );
+}
+
+function OrderDetailPageContent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);

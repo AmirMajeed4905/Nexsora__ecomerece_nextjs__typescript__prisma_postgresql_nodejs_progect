@@ -54,6 +54,17 @@ function recalculate(items: CartItem[]): { total: number; itemCount: number; uni
   return { total: parseFloat(total.toFixed(2)), itemCount, uniqueItemCount };
 }
 
+// Tracks the latest in-flight request "version" per cart item. Clicking
+// +/- rapidly fires a new PUT request on every click; those requests can
+// resolve out of order over the network (e.g. the response for click #2
+// arrives after the response for click #5). Without this guard, whichever
+// response happens to land LAST wins — even if it was for an older click —
+// which is exactly the "quantity goes up then back down" bug. Each call
+// to updateItem bumps the counter for that item and stamps its own
+// request with the new value; when a response comes back, it's only
+// applied if its stamp still matches the latest counter for that item.
+const requestVersions = new Map<string, number>();
+
 export const useCartStore = create<CartState>((set, get) => ({
   cart: null,
   isLoading: false,
@@ -91,14 +102,18 @@ export const useCartStore = create<CartState>((set, get) => ({
     }
   },
 
-  // ── Update Item — OPTIMISTIC ──────────────────────────────────
-  // UI updates instantly, API call happens in background
+  // ── Update Item — OPTIMISTIC, race-safe ───────────────────────
+  // UI updates instantly, API call happens in background. Only the
+  // response from the most recent call for a given itemId is applied —
+  // see the requestVersions comment above.
   updateItem: async (itemId, quantity) => {
     const { cart } = get();
     if (!cart) return;
 
-    // Save old state for rollback
     const oldItems = cart.items;
+
+    const myVersion = (requestVersions.get(itemId) ?? 0) + 1;
+    requestVersions.set(itemId, myVersion);
 
     // Optimistic update
     const newItems = oldItems.map((i) => {
@@ -112,9 +127,17 @@ export const useCartStore = create<CartState>((set, get) => ({
     // Background API call
     try {
       const res = await api.put(`/api/cart/${itemId}`, { quantity });
+
+      // A newer click already started a request after this one — let
+      // that one's response win instead of overwriting it with stale data.
+      if (requestVersions.get(itemId) !== myVersion) return;
+
       set({ cart: res.data.data.cart });
     } catch (err: unknown) {
-      // Rollback on error
+      // Same staleness check on the error path: don't roll back over a
+      // newer, still-in-flight (or already-applied) update.
+      if (requestVersions.get(itemId) !== myVersion) return;
+
       const { total: t, itemCount: ic, uniqueItemCount: uic } = recalculate(oldItems);
       set({ cart: { ...cart, items: oldItems, total: t, itemCount: ic, uniqueItemCount: uic } });
       toast.error(getErrorMessage(err, "Failed to update"));

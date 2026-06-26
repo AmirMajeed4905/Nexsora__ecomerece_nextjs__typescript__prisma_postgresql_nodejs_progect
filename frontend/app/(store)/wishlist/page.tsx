@@ -10,21 +10,27 @@ import StarRating from "@/components/ui/StarRating";
 import WishlistButton from "@/components/ui/WishlistButton";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
+import ProtectedRoute from "@/components/shared/ProtectedRoute";
 
+// ── Page (wraps content with the auth guard) ────────────────────
 export default function WishlistPage() {
+  return (
+    <ProtectedRoute>
+      <WishlistPageContent />
+    </ProtectedRoute>
+  );
+}
+
+function WishlistPageContent() {
   const { user, isInitialized } = useAuthStore();
   const { items, isLoading, fetchWishlist } = useWishlistStore();
   const { addToCart } = useCartStore();
 
   useEffect(() => {
-    // Wait for auth to finish initializing before deciding the user is
-    // logged out — otherwise this fires with user=null on every refresh,
-    // even when the user is actually authenticated (same root cause as
-    // the cart page redirect bug).
     if (isInitialized && user) fetchWishlist();
   }, [user, isInitialized, fetchWishlist]);
 
-  if (!isInitialized || isLoading) {
+  if (isLoading) {
     return <LoadingSpinner message="Loading your wishlist..." />;
   }
 

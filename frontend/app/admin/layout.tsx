@@ -167,17 +167,26 @@ const MobileMenu = ({
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, isInitialized } = useAuthStore();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Redirect non-admins
+  // Redirect non-admins. Waiting for isInitialized matters here the same
+  // way it did for the cart/orders/wishlist pages: without it, this would
+  // briefly see user=null on every refresh (before AuthProvider finishes
+  // restoring the session) and bounce a real admin straight to "/".
   useEffect(() => {
-    if (user && user.role !== "ADMIN") {
-      router.push("/");
+    if (isInitialized && (!user || user.role !== "ADMIN")) {
+      router.push(user ? "/" : "/login");
     }
-  }, [user, router]);
+  }, [isInitialized, user, router]);
 
-  if (!user || user.role !== "ADMIN") return null;
+  if (!isInitialized || !user || user.role !== "ADMIN") {
+    return (
+      <div className="h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-8 h-8 border-2 border-gray-900 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   const currentPageLabel = NAV_ITEMS.find((n) => n.href === pathname)?.label ?? "Admin";
 

@@ -38,49 +38,51 @@ export const verifyRefreshToken = (token: string): TokenPayload => {
 // ── Cookie Settings ─────────────────────────────────────────────
 // HttpOnly: JS cannot read these — immune to XSS token theft (the whole
 // reason both tokens live in cookies instead of localStorage/Zustand).
-// Secure: HTTPS-only, automatic in production.
 //
 // In production, frontend (Vercel) and backend (Render) live on different
 // domains, so the browser treats this as a cross-site request. Cross-site
-// cookies require sameSite: "none" + secure: true (HTTPS), otherwise the
-// browser silently drops the cookie and the user looks "logged out" right
-// after logging in. Locally, frontend/backend are different ports on the
-// same host — "lax" works fine there and avoids requiring HTTPS in dev.
-const isProd = ENV.NODE_ENV === "production";
-const cookieSameSite = isProd ? "none" : "lax";
+// cookies require sameSite: "none" + secure: true, otherwise the browser
+// SILENTLY DROPS the cookie entirely (no console error — it just never
+// gets stored). This was the actual root cause of "refresh token not
+// found" in production: sameSite was correctly "none" but secure wasn't
+// reliably tied to it.
+//
+// isProd/cookieSameSite are computed fresh on every call (not cached at
+// module-load time) so they always reflect the current ENV.NODE_ENV,
+// and secure is derived directly from sameSite rather than as a separate
+// flag — sameSite:"none" requires secure:true by spec, so keeping them
+// as two independently-set booleans was a latent bug waiting to
+// desync if either one was computed at the wrong time.
+function getCookieOptions() {
+  const isProd = ENV.NODE_ENV === "production";
+  const sameSite = isProd ? ("none" as const) : ("lax" as const);
+  return {
+    httpOnly: true,
+    secure: sameSite === "none" ? true : isProd, // none ALWAYS implies secure
+    sameSite,
+  };
+}
 
 // ── Access Token Cookie ──────────────────────────────────────────
 export const setAccessTokenCookie = (res: Response, token: string): void => {
   res.cookie("accessToken", token, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: cookieSameSite,
+    ...getCookieOptions(),
     maxAge: 15 * 60 * 1000, // 15 minutes — matches ACCESS_TOKEN_EXPIRES_IN default
   });
 };
 
 export const clearAccessTokenCookie = (res: Response): void => {
-  res.clearCookie("accessToken", {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: cookieSameSite,
-  });
+  res.clearCookie("accessToken", getCookieOptions());
 };
 
 // ── Refresh Token Cookie ─────────────────────────────────────────
 export const setRefreshTokenCookie = (res: Response, token: string): void => {
   res.cookie("refreshToken", token, {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: cookieSameSite,
+    ...getCookieOptions(),
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
   });
 };
 
 export const clearRefreshTokenCookie = (res: Response): void => {
-  res.clearCookie("refreshToken", {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: cookieSameSite,
-  });
+  res.clearCookie("refreshToken", getCookieOptions());
 };

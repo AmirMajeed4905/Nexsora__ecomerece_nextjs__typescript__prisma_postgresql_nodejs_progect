@@ -14,118 +14,101 @@ import api from "@/lib/axios";
 import { getErrorMessage } from "@/lib/utils";
 import { useCartStore } from "@/store/cartStore";
 
-const stripePromise = loadStripe(
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
-);
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 interface Address {
-  fullName: string;
-  phone: string;
-  street: string;
-  city: string;
-  state: string;
-  postalCode: string;
-  country: string;
+  fullName: string; phone: string; street: string;
+  city: string; state: string; postalCode: string; country: string;
 }
 
 const DEFAULT_ADDRESS: Address = {
-  fullName: "",
-  phone: "",
-  street: "",
-  city: "",
-  state: "",
-  postalCode: "",
-  country: "Pakistan",
+  fullName: "", phone: "", street: "",
+  city: "", state: "", postalCode: "", country: "Pakistan",
 };
 
 const ADDRESS_FIELDS = [
-  { key: "fullName", label: "Full Name", placeholder: "Amir Majeed" },
-  { key: "phone", label: "Phone", placeholder: "+92 300 1234567" },
-  { key: "street", label: "Street Address", placeholder: "123 Main Street" },
-  { key: "city", label: "City", placeholder: "Lahore" },
-  { key: "state", label: "State", placeholder: "Punjab" },
-  { key: "postalCode", label: "Postal Code", placeholder: "54000" },
-  { key: "country", label: "Country", placeholder: "Pakistan" },
+  { key: "fullName",   label: "Full Name",     placeholder: "Amir Majeed" },
+  { key: "phone",      label: "Phone",          placeholder: "+92 300 1234567" },
+  { key: "street",     label: "Street Address", placeholder: "123 Main Street" },
+  { key: "city",       label: "City",           placeholder: "Lahore" },
+  { key: "state",      label: "State",          placeholder: "Punjab" },
+  { key: "postalCode", label: "Postal Code",    placeholder: "54000" },
+  { key: "country",    label: "Country",        placeholder: "Pakistan" },
 ] as const;
 
-// ───────────────── STRIPE FORM ─────────────────
+// ── Stripe Payment Form ────────────────────────────────────────
 function StripePaymentForm({
   total,
   onSuccess,
 }: {
   total: number;
-  onSuccess: () => Promise<void>;
+  onSuccess: (paymentIntentId: string) => void;
 }) {
-  const stripe = useStripe();
+  const stripe   = useStripe();
   const elements = useElements();
   const [isPaying, setIsPaying] = useState(false);
-  const [isReady, setIsReady] = useState(false);
+  // Elements being non-null only means the provider mounted — the actual
+  // <PaymentElement> iframe can still be loading for a moment after that.
+  // Calling confirmPayment() before it's done throws "no mounted Payment
+  // Element". Tracking onReady gives us a reliable signal instead of
+  // guessing with a timeout.
+  const [isElementReady, setIsElementReady] = useState(false);
 
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!stripe || !elements || !isReady) return;
-
+    if (!stripe || !elements || !isElementReady) return;
     setIsPaying(true);
 
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
+      confirmParams: { return_url: `${window.location.origin}/orders` },
       redirect: "if_required",
     });
 
     if (error) {
       toast.error(error.message || "Payment failed");
       setIsPaying(false);
-      return;
+    } else if (paymentIntent) {
+      // Pass the id up so the parent can tell the backend to actually
+      // create the order (see CheckoutModal's handleStripeSuccess) —
+      // Stripe confirming payment doesn't create our order by itself.
+      onSuccess(paymentIntent.id);
     }
-
-    if (paymentIntent?.status === "succeeded") {
-      await onSuccess();
-    } else {
-      toast.error("Payment not completed");
-    }
-
-    setIsPaying(false);
   };
 
   return (
     <form onSubmit={handlePay} className="space-y-4">
-      <PaymentElement onReady={() => setIsReady(true)} />
-
+      <PaymentElement onReady={() => setIsElementReady(true)} />
       <button
         type="submit"
-        disabled={isPaying || !stripe || !isReady}
+        disabled={isPaying || !stripe || !isElementReady}
         className="w-full py-3 bg-rose-500 text-white font-bold rounded-xl hover:bg-rose-600 transition-colors disabled:opacity-60"
       >
         {isPaying
           ? "Processing..."
-          : !isReady
-          ? "Loading payment form..."
-          : `Pay $${total.toFixed(2)}`}
+          : !isElementReady
+            ? "Loading payment form..."
+            : `Pay $${total.toFixed(2)}`}
       </button>
     </form>
   );
 }
 
-// ───────────────── MAIN COMPONENT ─────────────────
-export default function CheckoutModal({
-  onClose,
-}: {
-  onClose: () => void;
-}) {
+// ── Main Component ─────────────────────────────────────────────
+export default function CheckoutModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const { cart, clearCartLocally } = useCartStore();
 
-  const [step, setStep] = useState<"address" | "payment">("address");
-  const [address, setAddress] = useState<Address>(DEFAULT_ADDRESS);
-  const [paymentMode, setPaymentMode] = useState<"cod" | "stripe">("cod");
+  const [step,         setStep]         = useState<"address" | "payment">("address");
+  const [address,      setAddress]      = useState<Address>(DEFAULT_ADDRESS);
+  const [paymentMode,  setPaymentMode]  = useState<"cod" | "stripe">("cod");
   const [clientSecret, setClientSecret] = useState("");
-  const [total, setTotal] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
+  const [total,        setTotal]        = useState(0);
+  const [isLoading,    setIsLoading]    = useState(false);
 
   const validateAddress = () => {
     for (const field of ADDRESS_FIELDS) {
-      if (!address[field.key].trim()) {
+      if (!address[field.key as keyof Address].trim()) {
         toast.error(`${field.label} is required`);
         return false;
       }
@@ -133,30 +116,20 @@ export default function CheckoutModal({
     return true;
   };
 
-  // ───── STEP 1 ─────
   const handleContinue = async () => {
     if (!validateAddress()) return;
-
     setIsLoading(true);
 
     try {
       if (paymentMode === "stripe") {
-        const res = await api.post("/api/payments/create-intent", {
-          address,
-        });
-
+        const res = await api.post("/api/payments/create-intent", { address });
         setClientSecret(res.data.data.clientSecret);
         setTotal(res.data.data.total);
-
         setStep("payment");
       } else {
-        const res = await api.post("/api/payments/cod", {
-          address,
-        });
-
-        clearCartLocally();
+        const res = await api.post("/api/payments/cod", { address });
+        clearCartLocally(); // ✅ Clear cart immediately
         toast.success("Order placed! 🎉");
-
         onClose();
         router.push(`/orders/${res.data.data.order.id}`);
       }
@@ -167,21 +140,25 @@ export default function CheckoutModal({
     }
   };
 
-  // ───── STRIPE SUCCESS (FIXED - NO BROKEN ENDPOINT) ─────
-  const handleStripeSuccess = async () => {
+  // Called after stripe.confirmPayment() succeeds on the client. This is
+  // what actually creates the order — Stripe confirming the charge on its
+  // side does not create our Order record by itself; that only happens
+  // once the backend verifies the PaymentIntent and writes the order.
+  const handleStripeSuccess = async (paymentIntentId: string) => {
     try {
-      // reuse COD order creation (safe & backend already exists)
-      const res = await api.post("/api/payments/cod", {
-        address,
-      });
-
+      const res = await api.post("/api/payments/confirm", { paymentIntentId });
       clearCartLocally();
       toast.success("Payment successful! Order placed 🎉");
-
       onClose();
-      router.push(`/orders/${res.data.data.order.id}`);
+      const orderId = res.data.data?.order?.id;
+      router.push(orderId ? `/orders/${orderId}` : "/orders");
     } catch (err: unknown) {
-      toast.error(getErrorMessage(err, "Order failed after payment"));
+      // Payment succeeded on Stripe's side even if this call fails, so we
+      // don't want to tell the user it failed outright — point them to
+      // their orders page where the webhook (safety net) should catch up.
+      toast.error(getErrorMessage(err, "Payment succeeded, but we couldn't confirm your order. Check your orders page shortly."));
+      onClose();
+      router.push("/orders");
     }
   };
 
@@ -189,109 +166,107 @@ export default function CheckoutModal({
     <div className="fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="bg-white rounded-t-3xl sm:rounded-2xl w-full sm:max-w-lg max-h-[95vh] overflow-y-auto">
 
-        {/* HEADER (UNCHANGED STYLE) */}
+        {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-3xl sm:rounded-t-2xl">
           <div className="flex items-center gap-3">
             {step === "payment" && (
-              <button
-                onClick={() => setStep("address")}
-                className="text-gray-400 hover:text-gray-700"
-              >
-                ←
+              <button onClick={() => setStep("address")} aria-label="Back" className="text-gray-400 hover:text-gray-700">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
               </button>
             )}
-            <h2 className="text-lg font-bold">
+            <h2 className="text-lg font-bold text-gray-900">
               {step === "address" ? "Checkout" : "Card Payment"}
             </h2>
           </div>
-
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
-            ✕
+          <button onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-gray-700">
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
         <div className="p-5">
 
-          {/* STEP 1 */}
+          {/* Step 1: Address */}
           {step === "address" && (
             <div className="space-y-5">
 
-              {/* ADDRESS FORM */}
-              <div className="grid grid-cols-2 gap-2.5">
-                {ADDRESS_FIELDS.map(({ key, label, placeholder }) => (
-                  <div
-                    key={key}
-                    className={
-                      key === "street" || key === "fullName"
-                        ? "col-span-2"
-                        : ""
-                    }
-                  >
-                    <label className="text-xs font-semibold text-gray-500">
-                      {label}
-                    </label>
-
-                    <input
-                      value={address[key]}
-                      placeholder={placeholder}
-                      onChange={(e) =>
-                        setAddress((p) => ({
-                          ...p,
-                          [key]: e.target.value,
-                        }))
-                      }
-                      className="w-full border p-2 rounded-xl"
-                    />
-                  </div>
-                ))}
+              {/* Summary */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-sm font-bold text-gray-700 mb-2">Order Summary</p>
+                <div className="space-y-1">
+                  {cart?.items.map((item) => (
+                    <div key={item.id} className="flex justify-between text-sm">
+                      <span className="text-gray-500 truncate flex-1 mr-2">{item.product.name} ×{item.quantity}</span>
+                      <span className="font-semibold text-gray-900">${item.subtotal.toFixed(2)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between font-bold text-gray-900">
+                  <span>Total</span>
+                  <span>${cart?.total.toFixed(2)}</span>
+                </div>
               </div>
 
-              {/* PAYMENT METHOD */}
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => setPaymentMode("cod")}
-                  className={`p-3 border rounded-xl ${
-                    paymentMode === "cod" ? "border-black" : ""
-                  }`}
-                >
-                  COD
-                </button>
-
-                <button
-                  onClick={() => setPaymentMode("stripe")}
-                  className={`p-3 border rounded-xl ${
-                    paymentMode === "stripe" ? "border-black" : ""
-                  }`}
-                >
-                  Card
-                </button>
+              {/* Address */}
+              <div>
+                <p className="text-sm font-bold text-gray-700 mb-3">Delivery Address</p>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {ADDRESS_FIELDS.map(({ key, label, placeholder }) => (
+                    <div key={key} className={key === "street" || key === "fullName" ? "col-span-2" : ""}>
+                      <label className="block text-xs font-semibold text-gray-500 mb-1">{label}</label>
+                      <input
+                        type="text"
+                        placeholder={placeholder}
+                        value={address[key as keyof Address]}
+                        onChange={(e) => setAddress((p) => ({ ...p, [key]: e.target.value }))}
+                        className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm outline-none focus:border-gray-900 focus:ring-2 focus:ring-gray-900/10 transition-all"
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              <button
-                onClick={handleContinue}
-                disabled={isLoading}
-                className="w-full bg-black text-white p-3 rounded-xl"
-              >
-                {isLoading
-                  ? "Processing..."
-                  : paymentMode === "cod"
-                  ? `Place Order $${cart?.total.toFixed(2)}`
-                  : `Continue $${cart?.total.toFixed(2)}`}
+              {/* Payment Method */}
+              <div>
+                <p className="text-sm font-bold text-gray-700 mb-2">Payment Method</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { mode: "cod"    as const, icon: "💵", title: "Cash on Delivery", sub: "Pay when received" },
+                    { mode: "stripe" as const, icon: "💳", title: "Card / Online",     sub: "Powered by Stripe" },
+                  ].map(({ mode, icon, title, sub }) => (
+                    <button key={mode} onClick={() => setPaymentMode(mode)}
+                      className={`p-3 rounded-xl border-2 text-left transition-all ${paymentMode === mode ? "border-gray-900 bg-gray-50" : "border-gray-200 hover:border-gray-300"}`}>
+                      <div className="text-xl mb-1">{icon}</div>
+                      <p className="text-sm font-bold text-gray-900">{title}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button onClick={handleContinue} disabled={isLoading}
+                className="w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-60">
+                {isLoading ? "Processing..." : paymentMode === "cod"
+                  ? `Place Order · $${cart?.total.toFixed(2)}`
+                  : `Continue to Payment · $${cart?.total.toFixed(2)}`
+                }
               </button>
             </div>
           )}
 
-          {/* STEP 2 */}
+          {/* Step 2: Stripe */}
           {step === "payment" && clientSecret && (
-            <Elements
-              stripe={stripePromise}
-              options={{ clientSecret }}
-            >
-              <StripePaymentForm
-                total={total}
-                onSuccess={handleStripeSuccess}
-              />
-            </Elements>
+            <div className="space-y-4">
+              <p className="text-sm text-gray-500">
+                Total: <span className="font-bold text-gray-900">${total.toFixed(2)}</span>
+              </p>
+              <Elements stripe={stripePromise} options={{ clientSecret, appearance: { theme: "stripe" } }}>
+                <StripePaymentForm total={total} onSuccess={handleStripeSuccess} />
+              </Elements>
+            </div>
           )}
         </div>
       </div>

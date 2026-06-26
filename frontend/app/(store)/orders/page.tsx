@@ -10,6 +10,7 @@ import { getErrorMessage } from "@/lib/utils";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import EmptyState from "@/components/ui/EmptyState";
 import ButtonSpinner from "@/components/ui/ButtonSpinner";
+import ProtectedRoute from "@/components/shared/ProtectedRoute";
 
 // ── Types ──────────────────────────────────────────────────────
 interface OrderItem {
@@ -50,7 +51,16 @@ const StatusBadge = ({ status }: { status: Order["status"] }) => {
 };
 
 // ── Component ──────────────────────────────────────────────────
+// ── Page (wraps content with the auth guard) ────────────────────
 export default function OrdersPage() {
+  return (
+    <ProtectedRoute>
+      <OrdersPageContent />
+    </ProtectedRoute>
+  );
+}
+
+function OrdersPageContent() {
   const { user, isInitialized } = useAuthStore();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);

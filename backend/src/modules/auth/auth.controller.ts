@@ -26,12 +26,26 @@ import {
 // without making an API call. It only ever holds a role string ("ADMIN" /
 // "CUSTOMER"), never a credential, so it isn't a token-theft risk the way
 // the access/refresh tokens would be if they were JS-readable.
-const setUserRoleCookie = (res: Response, role: string) => {
+//
+// secure is derived directly from sameSite (not set as an independent
+// flag) because sameSite:"none" requires secure:true by spec — Chrome
+// silently drops a sameSite:"none" cookie that isn't also marked secure,
+// with no console warning. That mismatch was the actual cause of
+// "refresh token not found" in production even though sameSite=None was
+// showing up correctly in the Set-Cookie header.
+function getRoleCookieOptions() {
   const isProd = process.env.NODE_ENV === "production";
-  res.cookie("userRole", role, {
+  const sameSite = isProd ? ("none" as const) : ("lax" as const);
+  return {
     httpOnly: false,
-    secure: isProd,
-    sameSite: isProd ? "none" : "lax",
+    secure: sameSite === "none" ? true : isProd,
+    sameSite,
+  };
+}
+
+const setUserRoleCookie = (res: Response, role: string) => {
+  res.cookie("userRole", role, {
+    ...getRoleCookieOptions(),
     maxAge: 60 * 60 * 24 * 7,           // 7 days
   });
 };
@@ -40,12 +54,7 @@ const setUserRoleCookie = (res: Response, role: string) => {
 // was set — otherwise the browser won't recognize it as the same cookie
 // and silently keeps the old one around.
 const clearUserRoleCookie = (res: Response) => {
-  const isProd = process.env.NODE_ENV === "production";
-  res.clearCookie("userRole", {
-    httpOnly: false,
-    secure: isProd,
-    sameSite: isProd ? "none" : "lax",
-  });
+  res.clearCookie("userRole", getRoleCookieOptions());
 };
 
 // ── Register ───────────────────────────────────────────────────
@@ -67,10 +76,13 @@ export const register = async (req: Request, res: Response): Promise<void> => {
   const hashedPassword = await bcrypt.hash(password, 12);
 
   // Avatar Upload
+  // uploadSingle (upload.middleware.ts) uses multer's .single("image"),
+  // which populates req.file (singular) — never req.files. Reading
+  // req.files here always returned undefined/empty, so an avatar chosen
+  // at signup was silently never uploaded.
   let avatarUrl: string | undefined;
-  const files = (req.files ?? []) as any[];
-  if (files.length > 0) {
-    const file = files[0];
+  const file = req.file;
+  if (file) {
     const uploaded = await uploadImage(file.buffer, CLOUDINARY_FOLDERS.AVATARS, {
       width: 200,
       height: 200,
@@ -226,8 +238,8 @@ export const getMe = async (req: Request, res: Response): Promise<void> => {
 
 // ── Update Avatar ──────────────────────────────────────────────
 export const updateAvatar = async (req: Request, res: Response): Promise<void> => {
-  const files = (req.files ?? []) as any[];
-  if (files.length === 0) {
+  const file = req.file;
+  if (!file) {
     sendError(res, 400, "Image file is required");
     return;
   }
@@ -242,7 +254,6 @@ export const updateAvatar = async (req: Request, res: Response): Promise<void> =
   }
 
   let avatarUrl: string;
-  const file = files[0];
 
   if (user.avatar) {
     const oldPublicId = extractPublicId(user.avatar);

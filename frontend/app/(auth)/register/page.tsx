@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, Suspense } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -47,7 +47,15 @@ function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || "/";
-  const { setAuth } = useAuthStore();
+  const { user, isInitialized, setAuth } = useAuthStore();
+
+  // Replaces middleware.ts's old behavior of redirecting away from
+  // /register if the user is already authenticated.
+  useEffect(() => {
+    if (isInitialized && user) {
+      router.replace("/");
+    }
+  }, [isInitialized, user, router]);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);

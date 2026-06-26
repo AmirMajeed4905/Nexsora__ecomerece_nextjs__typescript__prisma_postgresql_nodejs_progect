@@ -16,6 +16,7 @@ router.post(
 
 // Protected routes
 router.post("/create-intent", authMiddleware, asyncHandler(paymentController.createPaymentIntent));
+router.post("/confirm",       authMiddleware, asyncHandler(paymentController.confirmPayment));
 router.post("/cod",           authMiddleware, asyncHandler(paymentController.createCODOrder));
 
 export default router;
